@@ -20,7 +20,7 @@ votable_1 = parse("OB2_Box_1.vot")
 table_1 = votable_1.get_first_table()
 """
 
-def plot_with_colourbar(x,y,xlabel,ylabel,title,invert_y_axis = False):
+def plot_with_colourbar(x,y,xlabel,ylabel,title,colours,cmap,invert_y_axis = False):
     fig_pos, ax = plt.subplots(figsize=(10,10))
     plt.scatter(x,y,0.5,c=colours)
     if invert_y_axis == True:
@@ -35,24 +35,29 @@ def plot_with_colourbar(x,y,xlabel,ylabel,title,invert_y_axis = False):
 #OR:
 # Reads VOTable from file
 from astropy.io.votable import parse_single_table
+
+filename_list = ["OB2_Box_1-TESS_Mag.vot","OB2_Box_2-TESS_Mag.vot","OB2_Box_3-TESS_Mag.vot"]
+tables = [0]*len(filename_list)
+for i, x in enumerate(filename_list):
+    tables[i] = parse_single_table(x)
 #table_1 = parse_single_table("OB2_Box_1.vot")
 #table_2 = parse_single_table("OB2_Box_2.vot")
 #table_3 = parse_single_table("OB2_Box_3.vot")
-table_1 = parse_single_table("OB2_Box_1_bp-rp.vot")
-table_2 = parse_single_table("OB2_Box_2_bp-rp.vot")
-table_3 = parse_single_table("OB2_Box_3_bp-rp.vot")
+#table_1 = parse_single_table("OB2_Box_1_bp-rp.vot")
+#table_2 = parse_single_table("OB2_Box_2_bp-rp.vot")
+#table_3 = parse_single_table("OB2_Box_3_bp-rp.vot")
 #table_1 = parse_single_table("OB2_Box_1-TESS_Mag.vot")
 #table_2 = parse_single_table("OB2_Box_2-TESS_Mag.vot")
 #table_3 = parse_single_table("OB2_Box_3-TESS_Mag.vot")
 
-data_1 = np.ma.filled(table_1.array['pmra'], np.NaN)
+data_1 = np.ma.filled(tables[0].array['pmra'], np.NaN)
 
 # Pulls values from data tables and combines all boxes into single parameter arrays
 parameter_list = ['source_id', 'pmra', 'pmdec', 'ra', 'dec', 'phot_g_mean_mag', 'bp_rp', 'radial_velocity'] # Need to add RV and BP-RP colour as well
 my_dict = {}
 
 for i in parameter_list:
-    my_dict[i] = np.concatenate((np.ma.filled(table_1.array[i], -2), np.ma.filled(table_2.array[i], -2),np.ma.filled(table_3.array[i], -2)))
+    my_dict[i] = np.concatenate((np.ma.filled(tables[0].array[i], -2), np.ma.filled(tables[1].array[i], -2),np.ma.filled(tables[2].array[i], -2)))
 
 source_id = my_dict['source_id'] # Source identification number
 pmra = my_dict['pmra']           # Proper motion (right ascension)
@@ -82,48 +87,25 @@ normalize = matplotlib.colors.Normalize(vmin = min(u_mag), vmax=max(u_mag))
 colours = [cmap(normalize(value)) for value in u_mag]
 
 # Plots proper motion (ra) vs proper motion (dec) graph
-#fig_pm, ax = plt.subplots(figsize=(10,10))
-#ax.scatter(u_pmra,u_pmdec,1,c=colours)
-#plt.xlabel('pmra  (mas/yr)')
-#plt.ylabel('pmdec  (mas/yr)')
-#plt.title('Proper motion plot - OB2 - All Boxes')
-#cax, _ = matplotlib.colorbar.make_axes(ax)
-#cbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm = normalize)
-#cbar.set_label('g Magnitude')
+plot_with_colourbar(u_pmra,u_pmdec,'pmra (mas/yr)','pmdec (mas/yr)','Proper motion plot - OB2 - All Boxes in TESS Mag range',colours,cmap,invert_y_axis = False)
 
 # Plots star positions
-fig_pos, ax = plt.subplots(figsize=(10,10))
-#plt.scatter(u_ra,u_dec,0.5,c=colours)
-#plt.xlabel('ra  (mas)')
-#plt.ylabel('dec  (mas)')
-#plt.title('Location plot - OB2 - All boxes')
-#cax, _ = matplotlib.colorbar.make_axes(ax)
-#cbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm = normalize)
-#cbar.set_label('g Magnitude')
+plot_with_colourbar(u_ra,u_dec,'ra (mas)','dec (mas)','Location plot - OB2 - All boxes in TESS Mag range',colours,cmap,invert_y_axis = False)
+
+real_indices = [i for i, x in enumerate(u_bp_rp) if x != -2]
+u_bp_rp = u_bp_rp[real_indices] # Removes empty data from bp-rp
+mag_4_CAMD = u_mag[real_indices]
+
+cmap = matplotlib.cm.get_cmap('rainbow')
+normalize = matplotlib.colors.Normalize(vmin = min(mag_4_CAMD), vmax=max(mag_4_CAMD))
+colours = [cmap(normalize(value)) for value in mag_4_CAMD]
 
 # Plots Colour-Absolute Magnitude Diagram
-#fig_CAMD, ax = plt.subplots(figsize=(10,10))
-##real_indices = [i for i, x in enumerate(bp_rp) if x != -9999]
-##u_bp_rp = u_bp_rp[real_indices] # Removes empty data from bp-rp
-##mag_4_CAMD = u_mag[real_indices]
-#plt.scatter(u_bp_rp,u_mag,0.5,c=colours)
-#plt.gca().invert_yaxis()
-#plt.xlabel('BP-RP')
-#plt.ylabel('Absolute G Magnitude')
-#plt.title('Colour-Absolute Magnitude Diagram for Stellar Association')
-#cax, _ = matplotlib.colorbar.make_axes(ax)
-#cbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm = normalize)
-#cbar.set_label('g Magnitude')
+plot_with_colourbar(u_bp_rp,mag_4_CAMD,'BP-RP','Absolute G Magnitude','Colour-Absolute Magnitude Diagram for Stellar Association OB2 - All Boxes in TESS Mag range',colours,cmap,invert_y_axis = True)
 
-plot_with_colourbar(u_pmra,u_pmdec,'pmra (mas/yr)','pmdec (mas/yr)','Proper motion plot - OB2 - All Boxes',invert_y_axis = False)
-plot_with_colourbar(u_ra,u_dec,'ra (mas)','dec (mas)','Location plot - OB2 - All boxes',invert_y_axis = False)
-plot_with_colourbar(u_bp_rp,u_mag,'BP-RP','Absolute G Magnitude','Colour-Absolute Magnitude Diagram for Stellar Association OB2 - All Boxes',invert_y_axis = True)
 
 # More things to add:
 #   Lines on proper motion plot
-#   Pull BP-RP and RV data from Gaia database
-#   Collect BP and RP mean mag data
-#   Colour-Absolute Magnitude Diagram (G_mag vs BP-RP)
 #   UVW plots, two dimensions at a time 
 
 stop = timeit.default_timer()
