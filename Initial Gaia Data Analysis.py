@@ -36,19 +36,11 @@ def plot_with_colourbar(x,y,xlabel,ylabel,title,colours,cmap,invert_y_axis = Fal
 # Reads VOTable from file
 from astropy.io.votable import parse_single_table
 
+#filename_list = ["OB2_Box_1_bp-rp.vot","OB2_Box_2_bp-rp.vot","OB2_Box_3_bp-rp.vot"]
 filename_list = ["OB2_Box_1-TESS_Mag.vot","OB2_Box_2-TESS_Mag.vot","OB2_Box_3-TESS_Mag.vot"]
 tables = [0]*len(filename_list)
 for i, x in enumerate(filename_list):
     tables[i] = parse_single_table(x)
-#table_1 = parse_single_table("OB2_Box_1.vot")
-#table_2 = parse_single_table("OB2_Box_2.vot")
-#table_3 = parse_single_table("OB2_Box_3.vot")
-#table_1 = parse_single_table("OB2_Box_1_bp-rp.vot")
-#table_2 = parse_single_table("OB2_Box_2_bp-rp.vot")
-#table_3 = parse_single_table("OB2_Box_3_bp-rp.vot")
-#table_1 = parse_single_table("OB2_Box_1-TESS_Mag.vot")
-#table_2 = parse_single_table("OB2_Box_2-TESS_Mag.vot")
-#table_3 = parse_single_table("OB2_Box_3-TESS_Mag.vot")
 
 data_1 = np.ma.filled(tables[0].array['pmra'], np.NaN)
 
@@ -57,7 +49,7 @@ parameter_list = ['source_id', 'pmra', 'pmdec', 'ra', 'dec', 'phot_g_mean_mag', 
 my_dict = {}
 
 for i in parameter_list:
-    my_dict[i] = np.concatenate((np.ma.filled(tables[0].array[i], -2), np.ma.filled(tables[1].array[i], -2),np.ma.filled(tables[2].array[i], -2)))
+    my_dict[i] = np.concatenate((np.ma.filled(tables[0].array[i], -999), np.ma.filled(tables[1].array[i], -999),np.ma.filled(tables[2].array[i], -999)))
 
 source_id = my_dict['source_id'] # Source identification number
 pmra = my_dict['pmra']           # Proper motion (right ascension)
@@ -89,10 +81,18 @@ colours = [cmap(normalize(value)) for value in u_mag]
 # Plots proper motion (ra) vs proper motion (dec) graph
 plot_with_colourbar(u_pmra,u_pmdec,'pmra (mas/yr)','pmdec (mas/yr)','Proper motion plot - OB2 - All Boxes in TESS Mag range',colours,cmap,invert_y_axis = False)
 
+# OR: Plotting with smoothed density plot:
+#from scipy.stats import kde
+#k = kde.gaussian_kde([u_pmra,u_pmdec])
+#nbins = 300
+#xi, yi = np.mgrid[u_pmra.min():u_pmra.max():nbins*1j, u_pmdec.min():u_pmdec.max():nbins*1j]
+#zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+#plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.Greens_r)
+
 # Plots star positions
 plot_with_colourbar(u_ra,u_dec,'ra (mas)','dec (mas)','Location plot - OB2 - All boxes in TESS Mag range',colours,cmap,invert_y_axis = False)
 
-real_indices = [i for i, x in enumerate(u_bp_rp) if x != -2]
+real_indices = [i for i, x in enumerate(u_bp_rp) if x != -999]
 u_bp_rp = u_bp_rp[real_indices] # Removes empty data from bp-rp
 mag_4_CAMD = u_mag[real_indices]
 
@@ -101,7 +101,7 @@ normalize = matplotlib.colors.Normalize(vmin = min(mag_4_CAMD), vmax=max(mag_4_C
 colours = [cmap(normalize(value)) for value in mag_4_CAMD]
 
 # Plots Colour-Absolute Magnitude Diagram
-plot_with_colourbar(u_bp_rp,mag_4_CAMD,'BP-RP','Absolute G Magnitude','Colour-Absolute Magnitude Diagram for Stellar Association OB2 - All Boxes in TESS Mag range',colours,cmap,invert_y_axis = True)
+plot_with_colourbar(u_bp_rp,mag_4_CAMD,'BP-RP','Gaia G-band Magnitude','Colour-Absolute Magnitude Diagram for Stellar Association OB2 - All Boxes in TESS Mag range',colours,cmap,invert_y_axis = True)
 
 
 # More things to add:
