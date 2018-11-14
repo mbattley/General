@@ -53,23 +53,32 @@ def plot_with_colourbar(x,y,mag,xlabel,ylabel,title,invert_y_axis = False):
 # Read data from table
 Table = tab.Table
 data = Table.read('OB2_All_boxes_bp-rp')
+hipparcos_data = Table.read('Hipparcos_OB2_de_Zeeuw_1999.vot')
 
 # Change from unrecognisable unit names in file
 data['pmra'].unit = 'mas/yr'
 data['pmdec'].unit = 'mas/yr'
 data['radial_velocity'].unit = 'km/s'
+hipparcos_data['pmra'].unit = 'mas/yr'
+hipparcos_data['pmdec'].unit = 'mas/yr'
+hipparcos_data['ra'].unit = 'deg'
+hipparcos_data['dec'].unit = 'deg'
 
 # Input sky coordinates for all stars
 c_icrs = SkyCoord(ra = data['ra'], dec = data['dec'], pm_ra_cosdec = data['pmra'], pm_dec = data['pmdec'])
+c_icrs_hipparcos = SkyCoord(ra = hipparcos_data['ra'], dec = hipparcos_data['dec'], pm_ra_cosdec = hipparcos_data['pmra'], pm_dec = hipparcos_data['pmdec'])
 print(c_icrs)
 
 # Convert star coordinates to Galactic frame
 c_galactic = c_icrs.galactic
+c_galactic_hipparcos = c_icrs_hipparcos.galactic
 print(c_galactic)
 
 # Add equivalent galactic coordinates back into data
 data['pm_l_cosb'] = c_galactic.pm_l_cosb
 data['pm_b'] = c_galactic.pm_b
+hipparcos_data['pm_l_cosb'] = c_galactic_hipparcos.pm_l_cosb
+hipparcos_data['pm_b'] = c_galactic_hipparcos.pm_b
 
 # Select stars within this data where pms are only in the region between pm_l = [-50,10] and pm_b = [-30,30]
 sel = data['pm_l_cosb'] >= -50
@@ -92,6 +101,7 @@ plt.colorbar()
 plt.xlabel('pm_l_cosb (mas/yr)')
 plt.ylabel('pm_b (mas/yr)')
 plt.title('Proper motion plot for potential Sco_OB2 members')
+plt.scatter(hipparcos_data['pm_l_cosb'],hipparcos_data['pm_b'], 0.1, 'k')
 
 # Plots star positions
 plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (mas)','dec (mas)','Location plot - OB2 - All boxes in TESS Mag range')
