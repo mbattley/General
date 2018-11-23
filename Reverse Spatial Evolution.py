@@ -16,6 +16,7 @@ import pylab
 import timeit
 from astropy.coordinates import SkyCoord
 from math import sin, cos
+from matplotlib import animation
 
 
 start = timeit.default_timer()
@@ -112,19 +113,19 @@ Table = tab.Table
 hipparcos_data = Table.read('OB2_Gaia_Zeeuw_Match_dist')
 
 # Change from unrecognisable unit names in file
-hipparcos_data['pmra'].unit = 'mas/yr'
-hipparcos_data['pmdec'].unit = 'mas/yr'
-hipparcos_data['ra'].unit = 'deg'
-hipparcos_data['dec'].unit = 'deg'
+hipparcos_data['pmra_1'].unit = 'mas/yr'
+hipparcos_data['pmdec_1'].unit = 'mas/yr'
+hipparcos_data['ra_1'].unit = 'deg'
+hipparcos_data['dec_1'].unit = 'deg'
 
 # Assembles age matrix (in this case, quite approximate, broken only into Sco_Cen groups)
-hipparcos_data['age'] = np.array(['None']*len(hipparcos_data['ra']))
-US_age = 11 # Myr
-UCL_age = 16 # Myr
-LCC_age = 17 #Myr
-#US_age = 17 # Myr
-#UCL_age = 17 # Myr
+hipparcos_data['age'] = np.array(['None']*len(hipparcos_data['ra_1']))
+#US_age = 11 # Myr
+#UCL_age = 16 # Myr
 #LCC_age = 17 #Myr
+US_age = 0 # Myr
+UCL_age = 0 # Myr
+LCC_age = 0 #Myr
 
 
 for i, data in enumerate(hipparcos_data['OBAss']):
@@ -138,7 +139,7 @@ for i, data in enumerate(hipparcos_data['OBAss']):
 ages = [float(i) for i in hipparcos_data['age']] # (Myr)
 
 # Input sky coordinates for all stars
-c_icrs_hipparcos = SkyCoord(ra = hipparcos_data['ra'], dec = hipparcos_data['dec'], pm_ra_cosdec = hipparcos_data['pmra'], pm_dec = hipparcos_data['pmdec'])
+c_icrs_hipparcos = SkyCoord(ra = hipparcos_data['ra_1'], dec = hipparcos_data['dec_1'], pm_ra_cosdec = hipparcos_data['pmra_1'], pm_dec = hipparcos_data['pmdec_1'])
 
 # Convert star coordinates to Galactic frame
 c_galactic_hipparcos = c_icrs_hipparcos.galactic
@@ -166,28 +167,28 @@ for i, data in enumerate(original_l):
 #    if data < -90:
 #        original_dec[i] = data + 180*(1+data//180)
 
-# Plots positions at current time
-plt.figure()
-plt.scatter(hipparcos_data['l'], hipparcos_data['b'], 1)
-plt.title('Position of confirmed OB2 Association members at current time')
-plt.xlabel('l (deg)')
-plt.ylabel('b (deg)')
-
-# Plots positions of association stars near formation
-plt.figure()
-plt.scatter(original_l, original_b, 2)
-plt.title('Position of confirmed OB2 Association members near splitting time \n Age ={0} Myr'.format(hipparcos_data['age'][0]))
-plt.xlabel('l (deg)')
-plt.ylabel('b (deg)')
-#plt.xlim([0,360])
-#plt.ylim([-90,90])
-
-# Plot figure with arrows for velocities
-plt.figure()
-pylab.quiver(hipparcos_data['l'], hipparcos_data['b'], hipparcos_data['pm_l_cosb'], hipparcos_data['pm_b'], angles = 'uv', scale_units='xy', scale = 8)
-plt.title('Position and Velocities of confirmed OB2 Association members at current time')
-plt.xlabel('l (deg)')
-plt.ylabel('b (deg)')
+## Plots positions at current time
+#plt.figure()
+#plt.scatter(hipparcos_data['l'], hipparcos_data['b'], 1)
+#plt.title('Position of confirmed OB2 Association members at current time')
+#plt.xlabel('l (deg)')
+#plt.ylabel('b (deg)')
+#
+## Plots positions of association stars near formation
+#plt.figure()
+#plt.scatter(original_l, original_b, 2)
+#plt.title('Position of confirmed OB2 Association members near splitting time \n Age ={0} Myr'.format(hipparcos_data['age'][0]))
+#plt.xlabel('l (deg)')
+#plt.ylabel('b (deg)')
+##plt.xlim([0,360])
+##plt.ylim([-90,90])
+#
+## Plot figure with arrows for velocities
+#plt.figure()
+#pylab.quiver(hipparcos_data['l'], hipparcos_data['b'], hipparcos_data['pm_l_cosb'], hipparcos_data['pm_b'], angles = 'uv', scale_units='xy', scale = 8)
+#plt.title('Position and Velocities of confirmed OB2 Association members at current time')
+#plt.xlabel('l (deg)')
+#plt.ylabel('b (deg)')
 
 #########################################################################################################################################################################
 # Now in Galactic XYZ UVW space:
@@ -198,7 +199,7 @@ y_g = np.array([hipparcos_data['rest'][i] * cos(hipparcos_data['b'][i]*np.pi/180
 z_g = np.array([hipparcos_data['rest'][i] * sin(hipparcos_data['b'][i]*np.pi/180) for i,d1 in enumerate(hipparcos_data['b'])])
 
 # Calculate UVW galactic velocities --- (km/s)
-u_g, v_g, w_g = uvw(ra = hipparcos_data['ra'], dec = hipparcos_data['dec'], d = hipparcos_data['rest'], pmra = hipparcos_data['pmra'], pmdec = hipparcos_data['pmdec'], rv = hipparcos_data['radial_velocity'])
+u_g, v_g, w_g = uvw(ra = hipparcos_data['ra_1'], dec = hipparcos_data['dec_1'], d = hipparcos_data['rest'], pmra = hipparcos_data['pmra_1'], pmdec = hipparcos_data['pmdec_1'], rv = hipparcos_data['radvel'])
 
 # Calculate old XYZ positions
 vel_conv = 1.02269 #((pc/Myr)/(km/s)) --- conversion factor to change velocity units from km/s to pc/Myr 
@@ -206,39 +207,85 @@ x_g_old = x_g - u_g*vel_conv*ages
 y_g_old = y_g - v_g*vel_conv*ages
 z_g_old = z_g - w_g*vel_conv*ages
 
-# Plots XYZ positions at current time
-plt.figure()
-plt.scatter(x_g, y_g, 1)
-plt.title('Galactic XY Position of confirmed OB2 Association members \n Current time')
-plt.xlabel('X (pc)')
-plt.ylabel('Y (pc)')
+## Plots XYZ positions at current time
+#plt.figure()
+#plt.scatter(x_g, y_g, 1)
+#plt.title('Galactic XY Position of confirmed OB2 Association members \n Current time')
+#plt.xlabel('X (pc)')
+#plt.ylabel('Y (pc)')
 
 # Plots positions of association at 'age' of association
-plt.figure()
-plt.scatter(x_g_old, y_g_old, 1)
-plt.title('Galactic XY Position of confirmed OB2 Association members \n {0} Myr ago'.format(hipparcos_data['age'][0]))
+#plt.figure()
+#plt.scatter(x_g_old, y_g_old, 1)
+#plt.title('Galactic XY Position of confirmed OB2 Association members \n {0} Myr ago'.format(hipparcos_data['age'][0]))
+#plt.xlabel('X (pc)')
+#plt.ylabel('Y (pc)')
+#plt.xlim([0,500])
+
+#plt.figure()
+#plt.scatter(x_g_old, z_g_old, 1)
+#plt.title('Galactic XZ Position of confirmed OB2 Association members \n {0} Myr ago'.format(hipparcos_data['age'][0]))
+#plt.xlabel('X (pc)')
+#plt.ylabel('Z (pc)')
+#
+#plt.figure()
+#plt.scatter(y_g_old, z_g_old, 1)
+#plt.title('Galactic YZ Position of confirmed OB2 Association members \n {0} Myr ago'.format(hipparcos_data['age'][0]))
+#plt.xlabel('Y (pc)')
+#plt.ylabel('Z (pc)')
+
+########################## MAKING ANIMATIONS ##################################
+
+# Set up figure, axis and plot element
+fig = plt.figure()
+ax = plt.axes(xlim = (0,500), ylim = (-150,400))
+particles, = ax.plot([], [], 'bo', ms=1)
+time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+plt.title('Animation of Galactic XY Position for confirmed OB2 Association members \n t = 0 to 17Myr ago')
 plt.xlabel('X (pc)')
 plt.ylabel('Y (pc)')
-plt.xlim([0,500])
 
-# Plot position at current time with arrows for velocities
-plt.figure()
-pylab.quiver(y_g, x_g, v_g, u_g, angles = 'uv', scale_units='xy', scale = 3)
-plt.title('Galactic XY Position of confirmed OB2 Association members, with overplotted UV velocities \n Current time')
-plt.xlabel('Y (pc)')
-plt.ylabel('X (pc)')
+def init():
+    particles.set_data([], [])
+    time_text.set_text('')
+    return particles, time_text
 
-plt.figure()
-pylab.quiver(x_g, z_g, u_g, w_g, angles = 'uv', scale_units='xy', scale = 3)
-plt.title('Galactic XZ Position of confirmed OB2 Association members, with overplotted UW velocities \n Current time')
-plt.xlabel('X (pc)')
-plt.ylabel('Z (pc)')
+def animate(i):
+    time = np.linspace(0, 17, 1000) #Myrs
+    x_g_old = x_g - u_g*vel_conv*time[i]
+    y_g_old = y_g - v_g*vel_conv*time[i]
+    particles.set_data(x_g_old,y_g_old)
+    time_text.set_text('Time = - %.1f Myr' % time[i])
+    return particles,time_text
 
-plt.figure()
-pylab.quiver(y_g, z_g, v_g, w_g, angles = 'uv', scale_units='xy', scale = 3)
-plt.title('Galactic XZ Position of confirmed OB2 Association members, with overplotted UW velocities \n Current time')
-plt.xlabel('Y (pc)')
-plt.ylabel('Z (pc)')
+anim = animation.FuncAnimation(fig, animate, init_func = init, frames = 1000, interval = 20, blit = True)
+
+anim.save('xy_time_evolution.mp4', fps = 30, extra_args = ['-vcodec', 'libx264'])
+
+plt.show()
+
+###############################################################################
+
+
+
+## Plot position at current time with arrows for velocities
+#plt.figure()
+#pylab.quiver(y_g, x_g, v_g, u_g, angles = 'uv', scale_units='xy', scale = 3)
+#plt.title('Galactic XY Position of confirmed OB2 Association members, with overplotted UV velocities \n Current time')
+#plt.xlabel('Y (pc)')
+#plt.ylabel('X (pc)')
+#
+#plt.figure()
+#pylab.quiver(x_g, z_g, u_g, w_g, angles = 'uv', scale_units='xy', scale = 3)
+#plt.title('Galactic XZ Position of confirmed OB2 Association members, with overplotted UW velocities \n Current time')
+#plt.xlabel('X (pc)')
+#plt.ylabel('Z (pc)')
+#
+#plt.figure()
+#pylab.quiver(y_g, z_g, v_g, w_g, angles = 'uv', scale_units='xy', scale = 3)
+#plt.title('Galactic XZ Position of confirmed OB2 Association members, with overplotted UW velocities \n Current time')
+#plt.xlabel('Y (pc)')
+#plt.ylabel('Z (pc)')
 
 stop = timeit.default_timer()
 
