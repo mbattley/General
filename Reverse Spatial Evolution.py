@@ -44,9 +44,9 @@ def uvw(ra, dec, d, pmra, pmdec, rv):
     
     # Initialise conversion constants
     k = 4.74047 # km/s equivalent of 1AU/yr
-    A = [[0.0548755604,   0.4941094279, -0.8676661490],
-         [0.8734370902, - 0.4448296300, -0.1980763734],
-         [0.483850155,    0.7469822445, +0.4559837762]]
+    A = [[ 0.0548755604,   0.8734370902,  0.4838350155],
+         [ 0.4941094279, - 0.4448296300,  0.7469822445],
+         [-0.8676661490, - 0.1980763734,  0.4559837762]]
     
     # Sets all parameters as arrays in case they were entered as lists
     ra = np.array(ra)
@@ -66,7 +66,7 @@ def uvw(ra, dec, d, pmra, pmdec, rv):
     plx = 1000.0*1/d #parallax in mas
     vec1 = rv
     vec2 = k*pmra/plx
-    vec3 = k*pmra/plx
+    vec3 = k*pmdec/plx
     
     # Calculate cartesian UVW velocities
     u = ( A[0][0]*cos_ra*cos_dec + A[0][1]*sin_ra*cos_dec + A[0][2]*sin_dec)*vec1 + \
@@ -122,9 +122,9 @@ hipparcos_data['age'] = np.array(['None']*len(hipparcos_data['ra']))
 US_age = 11 # Myr
 UCL_age = 16 # Myr
 LCC_age = 17 #Myr
-#US_age = 10 # Myr
-#UCL_age = 10 # Myr
-#LCC_age = 10 #Myr
+#US_age = 17 # Myr
+#UCL_age = 17 # Myr
+#LCC_age = 17 #Myr
 
 
 for i, data in enumerate(hipparcos_data['OBAss']):
@@ -219,13 +219,26 @@ plt.scatter(x_g_old, y_g_old, 1)
 plt.title('Galactic XY Position of confirmed OB2 Association members \n {0} Myr ago'.format(hipparcos_data['age'][0]))
 plt.xlabel('X (pc)')
 plt.ylabel('Y (pc)')
+plt.xlim([0,500])
 
-# Plot figure with arrows for velocities
+# Plot position at current time with arrows for velocities
 plt.figure()
-pylab.quiver(x_g, y_g, u_g, v_g, angles = 'uv', scale_units='xy', scale = 3)
+pylab.quiver(y_g, x_g, v_g, u_g, angles = 'uv', scale_units='xy', scale = 3)
 plt.title('Galactic XY Position of confirmed OB2 Association members, with overplotted UV velocities \n Current time')
+plt.xlabel('Y (pc)')
+plt.ylabel('X (pc)')
+
+plt.figure()
+pylab.quiver(x_g, z_g, u_g, w_g, angles = 'uv', scale_units='xy', scale = 3)
+plt.title('Galactic XZ Position of confirmed OB2 Association members, with overplotted UW velocities \n Current time')
 plt.xlabel('X (pc)')
-plt.ylabel('Y (pc)')
+plt.ylabel('Z (pc)')
+
+plt.figure()
+pylab.quiver(y_g, z_g, v_g, w_g, angles = 'uv', scale_units='xy', scale = 3)
+plt.title('Galactic XZ Position of confirmed OB2 Association members, with overplotted UW velocities \n Current time')
+plt.xlabel('Y (pc)')
+plt.ylabel('Z (pc)')
 
 stop = timeit.default_timer()
 
