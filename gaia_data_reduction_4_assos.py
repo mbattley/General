@@ -3,19 +3,27 @@
 """
 Created on Tue Nov 13 16:52:44 2018
 
-Examination of the area around the Sco-OB2 Stellar association
+Gaia Data reduction to find YSOs in stellar associations and clusters 
 
-This script examines the area around the 'known' members of the Sco-OB2 Stellar
-Association, and plots a series of plots in order to take steps towards identifying 
-new members of this association.
+This script examines the wide area around the 'known' members of a stellar 
+association or cluster, before reducing the data to potential young members of 
+this group of stars
 
-Inputs: A VOTable containing Gaia DR2 data for the area around the Sco-OB2 
-        Stellar Association, including position, velocity, magnitude and indetifying
-        information.
+Input : A VOTable containing Gaia DR2 data for the area around the association 
+        of interest, including position, distance, velocity, magnitude and 
+        identifying information.
 
-Ouputs: Proper motion density plot
+Ouputs: Proper motion density plot for full area 
+            - with or without selection polygon
         Full area CAMD diagram
         Plot of stellar positions in this area
+        
+        Selected area CAMD diagram
+        CAMD density plot for selected area
+            - with or without selection polygon
+        
+        Final proper motion and location plots for fully reduced data
+        
 
 @author: Matthew Battley
 """
@@ -60,21 +68,21 @@ def plot_with_colourbar(x,y,mag,xlabel,ylabel,title,cbar_label = 'g Magnitude' ,
 
 # Read data from table
 Table = tab.Table
-data = Table.read('OB2_area_data.vot')
-hipparcos_data = Table.read('Hipparcos_OB2_de_Zeeuw_1999.vot')
+data = Table.read('Hyades_area_data_dist.vot')
+confirmed_data = Table.read('confirmed_Hyades_members_Gaia_Dist')
 
 # Change from unrecognisable unit names in file
 data['pmra'].unit = 'mas/yr'
 data['pmdec'].unit = 'mas/yr'
 data['radial_velocity'].unit = 'km/s'
-hipparcos_data['pmra'].unit = 'mas/yr'
-hipparcos_data['pmdec'].unit = 'mas/yr'
-hipparcos_data['ra'].unit = 'deg'
-hipparcos_data['dec'].unit = 'deg'
+confirmed_data['pmra'].unit = 'mas/yr'
+confirmed_data['pmdec'].unit = 'mas/yr'
+confirmed_data['ra'].unit = 'deg'
+confirmed_data['dec'].unit = 'deg'
 
 # Input sky coordinates for all stars
 c_icrs = SkyCoord(ra = data['ra'], dec = data['dec'], pm_ra_cosdec = data['pmra'], pm_dec = data['pmdec'])
-c_icrs_hipparcos = SkyCoord(ra = hipparcos_data['ra'], dec = hipparcos_data['dec'], pm_ra_cosdec = hipparcos_data['pmra'], pm_dec = hipparcos_data['pmdec'])
+c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra'], pm_dec = confirmed_data['pmdec'])
 
 # Convert star coordinates to Galactic frame
 c_galactic = c_icrs.galactic
@@ -83,41 +91,45 @@ c_galactic_hipparcos = c_icrs_hipparcos.galactic
 # Add equivalent galactic coordinates back into data
 data['pm_l_cosb'] = c_galactic.pm_l_cosb
 data['pm_b'] = c_galactic.pm_b
-hipparcos_data['pm_l_cosb'] = c_galactic_hipparcos.pm_l_cosb
-hipparcos_data['pm_b'] = c_galactic_hipparcos.pm_b
+confirmed_data['pm_l_cosb'] = c_galactic_hipparcos.pm_l_cosb
+confirmed_data['pm_b'] = c_galactic_hipparcos.pm_b
+
+# Sets distance limits
+false_dist_indices = [i for i, x in enumerate(data['rest']) if x < 17 or x > 77]
+data.remove_rows(false_dist_indices)
 
 # Select stars within this data where pms are only in the region between pm_l = [-50,10] and pm_b = [-30,30]
-sel = data['pm_l_cosb'] >= -50
-sel &= data['pm_l_cosb'] < 10
-sel &= data['pm_b'] >= -30
-sel &= data['pm_b'] <= 30
+sel = data['pm_l_cosb'] >= -100
+sel &= data['pm_l_cosb'] < 250
+sel &= data['pm_b'] >= -50
+sel &= data['pm_b'] <= 200
 
 small_area_stars = data[sel]
-
 
 ################## PLOTS PM PLOT AND DEFINES AREA OF INTEREST #################
 
 # Plotting proper motion density plot
 fig = plt.figure()
 k = kde.gaussian_kde([small_area_stars['pm_l_cosb'], small_area_stars['pm_b']])
-nbins = 500
+nbins = 100
 xi, yi = np.mgrid[small_area_stars['pm_l_cosb'].min():small_area_stars['pm_l_cosb'].max():nbins*1j, small_area_stars['pm_b'].min():small_area_stars['pm_b'].max():nbins*1j]
 zi = k(np.vstack([xi.flatten(), yi.flatten()]))
 cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r)
 plt.colorbar()
 plt.xlabel('pm_l_cosb (mas/yr)')
 plt.ylabel('pm_b (mas/yr)')
-plt.title('Proper motion plot for potential Sco_OB2 members')
-plt.scatter(hipparcos_data['pm_l_cosb'],hipparcos_data['pm_b'], 0.1, 'k')
+plt.title('Proper motion plot for area around Hyades members')
+plt.scatter(confirmed_data['pm_l_cosb'],confirmed_data['pm_b'], 0.1, 'k')
  
 # Defines polygon vertices and path for area of interest
 verts = [
-        (-48., -18.),
-        (-28., -23.),
-        (-10., -10.),
-        (-18.,   8.),
-        (-45.,  -2.),
-        (-48., -18.)
+        (10.,  40.),
+        (100.,-25.),
+        (160., 40.),
+        (160., 100.),
+        (110., 145.),
+        (25.,  110.),
+        (10.,  40.)
         ]
 path = Path(verts)
 
@@ -139,7 +151,7 @@ data.remove_rows(false_indices)
 ## Plots star positions
 #plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot - OB2')
 #
-################################ PLOTS CAMDs ###################################
+############################### PLOTS CAMDs ###################################
 ## Removes empty data from bp-rp
 #masked_indices = [i for i, x in enumerate(data['bp_rp']) if np.ma.is_masked(x)]
 #data.remove_rows(masked_indices)
@@ -151,7 +163,7 @@ data.remove_rows(false_indices)
 #mag_4_CAMD = M_G
 #
 ## Plots Colour-Absolute Magnitude Diagram
-#plot_with_colourbar(bp_rp,mag_4_CAMD,mag_4_CAMD,'BP-RP','Gaia Absolute G-band Magnitude','Colour-Absolute Magnitude Diagram for stars in the vicinity of Stellar Association OB2',invert_y_axis = True, y_lim = (15,-5))
+##plot_with_colourbar(bp_rp,mag_4_CAMD,mag_4_CAMD,'BP-RP','Gaia Absolute G-band Magnitude','Colour-Absolute Magnitude Diagram for stars in the vicinity of the Hyades',invert_y_axis = True, y_lim = (15,-5))
 #
 ## Plotting CAMD density plot
 #fig2 = plt.figure()
@@ -169,8 +181,8 @@ data.remove_rows(false_indices)
 #plt.colorbar()
 #plt.xlabel('BP-RP')
 #plt.ylabel('Gaia Absolute G-band Magnitude')
-#plt.title('Colour-Absolute Magnitude Density Plot for stars in the vicinity of Stellar Association OB2')
-#
+#plt.title('Colour-Absolute Magnitude Density Plot for stars in the vicinity of the Hyades')
+
 ## Defines polygon vertices and path for area of interest
 #verts_CAMD = [
 #             (1.,  3.5),
@@ -197,28 +209,28 @@ data.remove_rows(false_indices)
 #false_indices2 = [i for i, x in enumerate(inside2) if not x]
 #data.remove_rows(false_indices2)
 #
-## Plotting proper motion density plot
-#fig3 = plt.figure()
-#k3 = kde.gaussian_kde([data['pm_l_cosb'], data['pm_b']])
-#nbins = 200
-#x3i, y3i = np.mgrid[data['pm_l_cosb'].min():data['pm_l_cosb'].max():nbins*1j, data['pm_b'].min():data['pm_b'].max():nbins*1j]
-#z3i = k3(np.vstack([x3i.flatten(), y3i.flatten()]))
-#cs3 = plt.pcolormesh(x3i, y3i, z3i.reshape(x3i.shape), cmap=plt.cm.gist_ncar_r)
-#plt.colorbar()
-#plt.xlabel('pm_l_cosb (mas/yr)')
-#plt.ylabel('pm_b (mas/yr)')
-#plt.title('Proper motion plot for potential Pre-main-sequence Sco_OB2 members')
-#plt.scatter(hipparcos_data['pm_l_cosb'],hipparcos_data['pm_b'], 0.1, 'k')
-#
-## Standard proper motion plot with colorbar representing distance
-#plot_with_colourbar(data['pm_l_cosb'],data['pm_b'],data['rest'],'pm_l_cosb (mas/yr)','pm_b (mas/yr)','Proper motion plot for potential PMS Sco_OB2 members','Distance (pc)')
-#
-## Final location plot
-#plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot for potential PMS members of OB2')
-#
+# Plotting proper motion density plot
+fig3 = plt.figure()
+k3 = kde.gaussian_kde([data['pm_l_cosb'], data['pm_b']])
+nbins = 100
+x3i, y3i = np.mgrid[data['pm_l_cosb'].min():data['pm_l_cosb'].max():nbins*1j, data['pm_b'].min():data['pm_b'].max():nbins*1j]
+z3i = k3(np.vstack([x3i.flatten(), y3i.flatten()]))
+cs3 = plt.pcolormesh(x3i, y3i, z3i.reshape(x3i.shape), cmap=plt.cm.gist_ncar_r)
+plt.colorbar()
+plt.xlabel('pm_l_cosb (mas/yr)')
+plt.ylabel('pm_b (mas/yr)')
+plt.title('Proper motion plot for potential Hyades members')
+plt.scatter(confirmed_data['pm_l_cosb'],confirmed_data['pm_b'], 0.1, 'k')
+
+# Standard proper motion plot with colorbar representing distance
+plot_with_colourbar(data['pm_l_cosb'],data['pm_b'],data['rest'],'pm_l_cosb (mas/yr)','pm_b (mas/yr)','Proper motion plot for potential Hyades members','Distance (pc)')
+
+# Final location plot
+plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot for potential Hyades members')
+
 ############################## Save final table ################################
 #
-#data.write('Reduced_OB2_Data', format='votable')
+data.write('Reduced_Hyades_Data', format='votable')
 
 stop = timeit.default_timer()
 print('Time: ',stop - start)
