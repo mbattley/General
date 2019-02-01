@@ -68,21 +68,23 @@ def plot_with_colourbar(x,y,mag,xlabel,ylabel,title,cbar_label = 'g Magnitude' ,
 
 # Read data from table
 Table = tab.Table
-data = Table.read('Hyades_area_data_dist.vot')
-confirmed_data = Table.read('confirmed_Hyades_members_Gaia_Dist')
+data = Table.read('BPMG area 15-24hr_dist.vot')
+confirmed_data = Table.read('BPMG_All')
 
 # Change from unrecognisable unit names in file
 data['pmra'].unit = 'mas/yr'
 data['pmdec'].unit = 'mas/yr'
 data['radial_velocity'].unit = 'km/s'
-confirmed_data['pmra'].unit = 'mas/yr'
-confirmed_data['pmdec'].unit = 'mas/yr'
+confirmed_data['pmra_x'].unit = 'mas/yr'
+confirmed_data['pmdec_x'].unit = 'mas/yr'
 confirmed_data['ra'].unit = 'deg'
 confirmed_data['dec'].unit = 'deg'
 
 # Input sky coordinates for all stars
 c_icrs = SkyCoord(ra = data['ra'], dec = data['dec'], pm_ra_cosdec = data['pmra'], pm_dec = data['pmdec'])
-c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra'], pm_dec = confirmed_data['pmdec'])
+#c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra'], pm_dec = confirmed_data['pmdec'])
+c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra_x'], pm_dec = confirmed_data['pmdec_x'])
+
 
 # Convert star coordinates to Galactic frame
 c_galactic = c_icrs.galactic
@@ -95,55 +97,73 @@ confirmed_data['pm_l_cosb'] = c_galactic_hipparcos.pm_l_cosb
 confirmed_data['pm_b'] = c_galactic_hipparcos.pm_b
 
 # Sets distance limits
-false_dist_indices = [i for i, x in enumerate(data['rest']) if x < 17 or x > 77]
+false_dist_indices = [i for i, x in enumerate(data['rest']) if x < 25 or x > 55]
 data.remove_rows(false_dist_indices)
 
 # Select stars within this data where pms are only in the region between pm_l = [-50,10] and pm_b = [-30,30]
-sel = data['pm_l_cosb'] >= -100
-sel &= data['pm_l_cosb'] < 250
-sel &= data['pm_b'] >= -50
-sel &= data['pm_b'] <= 200
+#sel = data['pm_l_cosb'] >= -100
+#sel &= data['pm_l_cosb'] < 250
+#sel &= data['pm_b'] >= -50
+#sel &= data['pm_b'] <= 200
+
+sel = data['pmra'] >= -300
+sel &= data['pmra'] < 300
+sel &= data['pmdec'] >= -200
+sel &= data['pmdec'] <= 200
 
 small_area_stars = data[sel]
 
 ################## PLOTS PM PLOT AND DEFINES AREA OF INTEREST #################
 
+## Plotting proper motion density plot
+#fig = plt.figure()
+#k = kde.gaussian_kde([small_area_stars['pm_l_cosb'], small_area_stars['pm_b']])
+#nbins = 100
+#xi, yi = np.mgrid[small_area_stars['pm_l_cosb'].min():small_area_stars['pm_l_cosb'].max():nbins*1j, small_area_stars['pm_b'].min():small_area_stars['pm_b'].max():nbins*1j]
+#zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+#cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r)
+#plt.colorbar()
+#plt.xlabel('pm_l_cosb (mas/yr)')
+#plt.ylabel('pm_b (mas/yr)')
+#plt.title('Proper motion plot for area around BPMG members')
+#plt.scatter(confirmed_data['pm_l_cosb'],confirmed_data['pm_b'], 0.1, 'k')
+ 
 # Plotting proper motion density plot
 fig = plt.figure()
-k = kde.gaussian_kde([small_area_stars['pm_l_cosb'], small_area_stars['pm_b']])
+k = kde.gaussian_kde([small_area_stars['pmra'], small_area_stars['pmdec']])
 nbins = 100
-xi, yi = np.mgrid[small_area_stars['pm_l_cosb'].min():small_area_stars['pm_l_cosb'].max():nbins*1j, small_area_stars['pm_b'].min():small_area_stars['pm_b'].max():nbins*1j]
+xi, yi = np.mgrid[small_area_stars['pmra'].min():small_area_stars['pmra'].max():nbins*1j, small_area_stars['pmdec'].min():small_area_stars['pmdec'].max():nbins*1j]
 zi = k(np.vstack([xi.flatten(), yi.flatten()]))
-cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r)
+cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r, vmax = 0.0001)
 plt.colorbar()
-plt.xlabel('pm_l_cosb (mas/yr)')
-plt.ylabel('pm_b (mas/yr)')
-plt.title('Proper motion plot for area around Hyades members')
-plt.scatter(confirmed_data['pm_l_cosb'],confirmed_data['pm_b'], 0.1, 'k')
- 
-# Defines polygon vertices and path for area of interest
-verts = [
-        (10.,  40.),
-        (100.,-25.),
-        (160., 40.),
-        (160., 100.),
-        (110., 145.),
-        (25.,  110.),
-        (10.,  40.)
-        ]
-path = Path(verts)
+plt.xlabel('pmra (mas/yr)')
+plt.ylabel('pmdec (mas/yr)')
+plt.title('Proper motion plot for area around BPMG members')
+plt.scatter(confirmed_data['pmra_x'],confirmed_data['pmdec_x'], 0.1, 'k')
 
-# Overplots polygon enclosing area of interest
-ax = fig.add_subplot(111)
-patch = patches.PathPatch(path, lw=1, fill = False, color = 'r')
-ax.add_patch(patch)
-
-# Determines which data points are inside area of interest
-points = np.column_stack((data['pm_l_cosb'],data['pm_b']))
-inside = path.contains_points(points)
-
-false_indices = [i for i, x in enumerate(inside) if not x]
-data.remove_rows(false_indices)
+## Defines polygon vertices and path for area of interest
+#verts = [
+#        (10.,  40.),
+#        (100.,-25.),
+#        (160., 40.),
+#        (160., 100.),
+#        (110., 145.),
+#        (25.,  110.),
+#        (10.,  40.)
+#        ]
+#path = Path(verts)
+#
+## Overplots polygon enclosing area of interest
+#ax = fig.add_subplot(111)
+#patch = patches.PathPatch(path, lw=1, fill = False, color = 'r')
+#ax.add_patch(patch)
+#
+## Determines which data points are inside area of interest
+#points = np.column_stack((data['pm_l_cosb'],data['pm_b']))
+#inside = path.contains_points(points)
+#
+#false_indices = [i for i, x in enumerate(inside) if not x]
+#data.remove_rows(false_indices)
 
 
 ############################ PLOTS STAR POSITIONS ##############################
@@ -210,27 +230,27 @@ data.remove_rows(false_indices)
 #data.remove_rows(false_indices2)
 #
 # Plotting proper motion density plot
-fig3 = plt.figure()
-k3 = kde.gaussian_kde([data['pm_l_cosb'], data['pm_b']])
-nbins = 100
-x3i, y3i = np.mgrid[data['pm_l_cosb'].min():data['pm_l_cosb'].max():nbins*1j, data['pm_b'].min():data['pm_b'].max():nbins*1j]
-z3i = k3(np.vstack([x3i.flatten(), y3i.flatten()]))
-cs3 = plt.pcolormesh(x3i, y3i, z3i.reshape(x3i.shape), cmap=plt.cm.gist_ncar_r)
-plt.colorbar()
-plt.xlabel('pm_l_cosb (mas/yr)')
-plt.ylabel('pm_b (mas/yr)')
-plt.title('Proper motion plot for potential Hyades members')
-plt.scatter(confirmed_data['pm_l_cosb'],confirmed_data['pm_b'], 0.1, 'k')
-
-# Standard proper motion plot with colorbar representing distance
-plot_with_colourbar(data['pm_l_cosb'],data['pm_b'],data['rest'],'pm_l_cosb (mas/yr)','pm_b (mas/yr)','Proper motion plot for potential Hyades members','Distance (pc)')
-
-# Final location plot
-plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot for potential Hyades members')
-
-############################## Save final table ################################
+#fig3 = plt.figure()
+#k3 = kde.gaussian_kde([data['pm_l_cosb'], data['pm_b']])
+#nbins = 100
+#x3i, y3i = np.mgrid[data['pm_l_cosb'].min():data['pm_l_cosb'].max():nbins*1j, data['pm_b'].min():data['pm_b'].max():nbins*1j]
+#z3i = k3(np.vstack([x3i.flatten(), y3i.flatten()]))
+#cs3 = plt.pcolormesh(x3i, y3i, z3i.reshape(x3i.shape), cmap=plt.cm.gist_ncar_r)
+#plt.colorbar()
+#plt.xlabel('pm_l_cosb (mas/yr)')
+#plt.ylabel('pm_b (mas/yr)')
+#plt.title('Proper motion plot for potential Hyades members')
+#plt.scatter(confirmed_data['pm_l_cosb'],confirmed_data['pm_b'], 0.1, 'k')
 #
-data.write('Reduced_Hyades_Data', format='votable')
+## Standard proper motion plot with colorbar representing distance
+#plot_with_colourbar(data['pm_l_cosb'],data['pm_b'],data['rest'],'pm_l_cosb (mas/yr)','pm_b (mas/yr)','Proper motion plot for potential Hyades members','Distance (pc)')
+#
+## Final location plot
+#plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot for potential Hyades members')
+#
+############################### Save final table ################################
+##
+#data.write('Reduced_Hyades_Data', format='votable')
 
 stop = timeit.default_timer()
 print('Time: ',stop - start)
