@@ -3,6 +3,8 @@
 """
 Created on Fri Jan 25 11:39:53 2019
 
+Script to practice using the PyTransit Tool
+
 @author: phrhzn
 """
 

@@ -3,6 +3,8 @@
 """
 Created on Fri Jan 25 09:19:18 2019
 
+A collecction of useful lightkurve calls and general practice
+
 @author: phrhzn
 """
 
@@ -15,6 +17,7 @@ from astropy.stats import BoxLeastSquares
 from astropy.coordinates import SkyCoord
 from glob import glob
 from lightkurve import KeplerTargetPixelFile, TessTargetPixelFile
+from TESSselfflatten import TESSflatten
 
 def make_transit_periodogram(t,y,dy=0.01):
     """
@@ -46,13 +49,46 @@ def make_transit_periodogram(t,y,dy=0.01):
     #best_fit = periods[np.argmax(power)]
     #print('Best Fit Period: {} days'.format(best_fit))
 
+def phase_fold_plot(t, lc, period, epoch, title):
+    """
+    Phase-folds the lc by the given period, and plots a phase-folded light-curve
+    for the object of interest
+    """
+    phase = np.mod(t-epoch-period/2,period)/period 
+    
+    plt.figure()
+    plt.scatter(phase, lc, c='k', s=2)
+    plt.title(title)
+    plt.xlabel('Phase')
+    plt.ylabel('Normalized Flux')
+    
+def transit_dot_times(epoch, p_period, lc_time):
+    """
+    Determines the times for the positions of transits for known exoplanets in
+    a lightcurve, given an epoch of first trasnit and period of planet
+    """
+    p_times = [epoch]
+    time = epoch + p_period
+    counter = 1
+    
+    while time < lc_time[-1]:
+        p_times += [epoch + counter*p_period]
+        counter += 1
+        time += p_period
+    
+    return p_times
+
 # Get target pixel file
 #tpf = lightkurve.search_targetpixelfile('kepler-10', quarter=5).download()
 #tpf = lightkurve.search_targetpixelfile("316.9615, -26.0967", sector=1).download()
-#tpf = lightkurve.search_targetpixelfile("LHS 3844", sector=1).download()
+#tpf = lightkurve.search_targetpixelfile("TIC 31747041", sector=1).download()
+#tpf = lightkurve.search_targetpixelfile("WASP 73", sector=1).download()
 #tpf = lightkurve.search_targetpixelfile("21:06:31.65 -26:41:34.29 ", sector=1).download()
 #tpf = lightkurve.search.open('tess-s0001-1-4_316.63187500000004_-26.692858333333334_10x10_astrocut.fits')
 #tpf = TessTargetPixelFile('https://archive.stsci.edu/hlsps/tess-data-alerts/hlsp_tess-data-alerts_tess_phot_00261136679-s01_tess_v1_tp.fits')
+#tpf = lightkurve.search.open('tess-s0003-2-2_42.984364_-30.814529_10x15_astrocut.fits')
+tpf = lightkurve.search.open('tess-s0004-2-1_42.984364_-30.814529_10x15_astrocut.fits')
+#lc = lightkurve.search_tesscut(" TIC 178155732", sector =3)
 #
 ## Alternatively: Get tpf from TESS FFI cutouts
 ##fnames = np.sort(glob('*.fits'))
@@ -63,16 +99,16 @@ def make_transit_periodogram(t,y,dy=0.01):
 ##tpf = open("tess-s0001-1-4_316.631875_-26.6928583_10x10_astrocut.fits")
 ##
 #aperture_mask = tpf.pipeline_mask
-#
-## Plot tpf
-#tpf.plot(aperture_mask = tpf.pipeline_mask)
-##
-## Create a median image of the source over time
-#median_image = np.nanmedian(tpf.flux, axis=0)
-#
-## Select pixels which are brighter than the 85th percentile of the median image
-#aperture_mask = median_image > np.nanpercentile(median_image, 85)
-#
+
+# Plot tpf
+tpf.plot(aperture_mask = tpf.pipeline_mask)
+
+# Create a median image of the source over time
+median_image = np.nanmedian(tpf.flux, axis=0)
+
+# Select pixels which are brighter than the 85th percentile of the median image
+aperture_mask = median_image > np.nanpercentile(median_image, 85)
+
 ##Create my own mask (if necessary)
 ##my_mask= np.array([[False, False, False, False, False, False, False, False, False,
 ##        False],
@@ -96,65 +132,113 @@ def make_transit_periodogram(t,y,dy=0.01):
 ##        False]])
 #
 #
-## Plot tpf
-#tpf.plot(aperture_mask = aperture_mask)
-##
-## Plot base lightcurve
-##tpf.to_lightcurve().plot()
-#tpf.to_lightcurve(aperture_mask = aperture_mask).plot()
+# Plot tpf
+tpf.plot(aperture_mask = aperture_mask)
 #
-## Flatten lightcurve
+# Plot base lightcurve
+#tpf.to_lightcurve().plot()
+tpf.to_lightcurve(aperture_mask = aperture_mask).plot()
+
+# Flatten lightcurve
 #tpf.to_lightcurve(aperture_mask = aperture_mask).flatten().plot()
-#
-## Remove outliers
+
+# Remove outliers
 #tpf.to_lightcurve(aperture_mask = aperture_mask).flatten(window_length = 1001).remove_outliers().plot()
-##plt.xlim(1330, 1335)
-#
-## Now with binning!
+tpf.to_lightcurve(aperture_mask = aperture_mask).remove_outliers(sigma = 5).plot()
+#plt.xlim(1330, 1335)
+
+# Now with binning!
 #tpf.to_lightcurve(aperture_mask = aperture_mask).flatten(window_length = 1001).remove_outliers().bin(binsize=10).plot()
-##plt.xlim(1330, 1335)
+#plt.xlim(1330, 1335)
+
+# Convert to lightcurve
+lc = tpf.to_lightcurve(aperture_mask = aperture_mask).remove_outliers(sigma = 5)
+
+## Clip out dodgy jitter data
+#lc = lc[(lc.time < 1382) | (lc.time > 1384)]
+
+#lc.flatten().fold(period=5.97188).scatter()
+
+# Set up lightcurve for Dave's flattening code ((nx3) array; time starts from zero)
+time_from_zero = lc.time - lc.time[0]
+
+lcurve = np.vstack((time_from_zero, lc.flux, lc.flux_err)).T
+
+# Adding in dots under each transit
+# Sector 1 Epochs
+#epoch_p1 = 1385.774883
+#epoch_p2 = 1384.085367
+
+# Sector 2 epochs
+epoch_p1 = 1415.634
+epoch_p2 = 1412.774
+period_p1 = 5.97188
+period_p2 = 3.586159
+
+p1_times = transit_dot_times(epoch_p1, period_p1, lc.time)
+p2_times = transit_dot_times(epoch_p2, period_p2, lc.time)
+
+p1_marker_y = [0.999]*len(p1_times)
+p2_marker_y = [0.999]*len(p2_times)
+
+## Run Dave's flattening code
+plt.figure()
+TESSflatten_lc = TESSflatten(lcurve, gapthresh = 1)
+plt.scatter(lc.time, TESSflatten_lc, c = 'k', s = 1, label = 'TESSflatten flux')
+plt.scatter(p1_times, p1_marker_y, c = 'r', s = 5, label = 'Planet 1')
+plt.scatter(p2_times, p2_marker_y, c = 'g', s = 5, label = 'Planet 2')
+plt.title('TOI-396 with TESSflatten - Sector 4')
+plt.ylabel('Normalized Flux')
+plt.xlabel('Time - 2457000 [BTJD days]')
+
+# Phase folding by periods of suspected planets
+phase_fold_plot(lc.time, TESSflatten_lc, period_p1, epoch_p1, title='TOI-396 Lightcurve folded by {} days - Sector 4'.format(period_p1))
+phase_fold_plot(lc.time, TESSflatten_lc, period_p2, epoch_p2, title='TOI-396 Lightcurve folded by {} days - Sector 4'.format(period_p2))
+
 #
-## Convert to lightcurve
-#lc = tpf.to_lightcurve(aperture_mask = aperture_mask).flatten(window_length=1001).remove_outliers()
+## Clip out dodgy jitter data
+#lc = lc[(lc.time < 1382) | (lc.time > 1384)]
 #
 ## Find optimum period
 #make_transit_periodogram(t = lc.time, y = lc.flux)
 #
-## Phase fold
-#tpf.to_lightcurve(aperture_mask = aperture_mask).flatten(window_length=1001).remove_outliers().fold(period=6.275).errorbar() #n.b. period in days
+## Re-plot
+#lc.plot()
 
-# Phase fold without flattening
+# Phase fold
+#lc.fold(period=4.85374).errorbar() #n.b. period in days
+
+##Phase fold without flattening
 #tpf.to_lightcurve().fold(period=2.849375).errorbar()
 #tpf.to_lightcurve(aperture_mask = aperture_mask).remove_outliers().fold(period=3.0440499).errorbar()
 
 ##############################################################################
 
 # And now for Pi Men c:
-from lightkurve import TessTargetPixelFile
-tpf2 = TessTargetPixelFile('https://archive.stsci.edu/hlsps/tess-data-alerts/hlsp_tess-data-alerts_tess_phot_00261136679-s01_tess_v1_tp.fits')
-
-# Create better aperture...
-# Create a median image of the source over time
-median_image = np.nanmedian(tpf2.flux, axis=0)
-
-# Select pixels which are brighter than the 85th percentile of the median image
-aperture_mask = median_image > np.nanpercentile(median_image, 85)
-
-# Plot that aperture
-tpf2.plot(aperture_mask=aperture_mask)
-
-# Convert to lightcurve
-lc2 = tpf2.to_lightcurve(aperture_mask=aperture_mask).flatten(window_length=1001)
-
-# Clip out dodgy jitter data
-lc2 = lc2[(lc2.time < 1346) | (lc2.time > 1350)]
-
-
-# Find optimum period (new)
-make_transit_periodogram(t = lc2.time, y = lc2.flux)
-
-#Remove outliers, fold, bin and plot with error bars
-lc2.remove_outliers(sigma=6).fold(period=6.275).bin(binsize=10).errorbar()
+#tpf2 = TessTargetPixelFile('https://archive.stsci.edu/hlsps/tess-data-alerts/hlsp_tess-data-alerts_tess_phot_00261136679-s01_tess_v1_tp.fits')
+#
+## Create better aperture...
+## Create a median image of the source over time
+#median_image = np.nanmedian(tpf2.flux, axis=0)
+#
+## Select pixels which are brighter than the 85th percentile of the median image
+#aperture_mask = median_image > np.nanpercentile(median_image, 85)
+#
+## Plot that aperture
+#tpf2.plot(aperture_mask=aperture_mask)
+#
+## Convert to lightcurve
+#lc2 = tpf2.to_lightcurve(aperture_mask=aperture_mask).flatten(window_length=1001)
+#
+## Clip out dodgy jitter data
+#lc2 = lc2[(lc2.time < 1346) | (lc2.time > 1350)]
+#
+#
+## Find optimum period (new)
+#make_transit_periodogram(t = lc2.time, y = lc2.flux)
+#
+##Remove outliers, fold, bin and plot with error bars
+#lc2.remove_outliers(sigma=6).fold(period=6.275).bin(binsize=10).errorbar()
 
 ##############################################################################
 # Comparing two apertures

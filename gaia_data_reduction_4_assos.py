@@ -68,36 +68,36 @@ def plot_with_colourbar(x,y,mag,xlabel,ylabel,title,cbar_label = 'g Magnitude' ,
 
 # Read data from table
 Table = tab.Table
-data = Table.read('BPMG area 15-24hr_dist.vot')
-confirmed_data = Table.read('BPMG_All')
+data = Table.read('Kepler Prime Mission field-dist.vot')
+confirmed_data = Table.read('Kepler planets with hosts seen by Gaia.vot')
 
 # Change from unrecognisable unit names in file
 data['pmra'].unit = 'mas/yr'
 data['pmdec'].unit = 'mas/yr'
 data['radial_velocity'].unit = 'km/s'
-confirmed_data['pmra_x'].unit = 'mas/yr'
-confirmed_data['pmdec_x'].unit = 'mas/yr'
-confirmed_data['ra'].unit = 'deg'
-confirmed_data['dec'].unit = 'deg'
+#confirmed_data['pmra_x'].unit = 'mas/yr'
+#confirmed_data['pmdec_x'].unit = 'mas/yr'
+#confirmed_data['ra'].unit = 'deg'
+#confirmed_data['dec'].unit = 'deg'
 
 # Input sky coordinates for all stars
 c_icrs = SkyCoord(ra = data['ra'], dec = data['dec'], pm_ra_cosdec = data['pmra'], pm_dec = data['pmdec'])
 #c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra'], pm_dec = confirmed_data['pmdec'])
-c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra_x'], pm_dec = confirmed_data['pmdec_x'])
+#c_icrs_hipparcos = SkyCoord(ra = confirmed_data['ra'], dec = confirmed_data['dec'], pm_ra_cosdec = confirmed_data['pmra_x'], pm_dec = confirmed_data['pmdec_x'])
 
 
 # Convert star coordinates to Galactic frame
 c_galactic = c_icrs.galactic
-c_galactic_hipparcos = c_icrs_hipparcos.galactic
+#c_galactic_hipparcos = c_icrs_hipparcos.galactic
 
 # Add equivalent galactic coordinates back into data
 data['pm_l_cosb'] = c_galactic.pm_l_cosb
 data['pm_b'] = c_galactic.pm_b
-confirmed_data['pm_l_cosb'] = c_galactic_hipparcos.pm_l_cosb
-confirmed_data['pm_b'] = c_galactic_hipparcos.pm_b
+#confirmed_data['pm_l_cosb'] = c_galactic_hipparcos.pm_l_cosb
+#confirmed_data['pm_b'] = c_galactic_hipparcos.pm_b
 
 # Sets distance limits
-false_dist_indices = [i for i, x in enumerate(data['rest']) if x < 25 or x > 55]
+false_dist_indices = [i for i, x in enumerate(data['rest']) if x >50 ]
 data.remove_rows(false_dist_indices)
 
 # Select stars within this data where pms are only in the region between pm_l = [-50,10] and pm_b = [-30,30]
@@ -108,8 +108,8 @@ data.remove_rows(false_dist_indices)
 
 sel = data['pmra'] >= -300
 sel &= data['pmra'] < 300
-sel &= data['pmdec'] >= -200
-sel &= data['pmdec'] <= 200
+sel &= data['pmdec'] >= -300
+sel &= data['pmdec'] <= 300
 
 small_area_stars = data[sel]
 
@@ -134,12 +134,13 @@ k = kde.gaussian_kde([small_area_stars['pmra'], small_area_stars['pmdec']])
 nbins = 100
 xi, yi = np.mgrid[small_area_stars['pmra'].min():small_area_stars['pmra'].max():nbins*1j, small_area_stars['pmdec'].min():small_area_stars['pmdec'].max():nbins*1j]
 zi = k(np.vstack([xi.flatten(), yi.flatten()]))
-cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r, vmax = 0.0001)
+#cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r, vmax = 0.000005)
+cs = plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.gist_ncar_r)
 plt.colorbar()
 plt.xlabel('pmra (mas/yr)')
 plt.ylabel('pmdec (mas/yr)')
-plt.title('Proper motion plot for area around BPMG members')
-plt.scatter(confirmed_data['pmra_x'],confirmed_data['pmdec_x'], 0.1, 'k')
+plt.title('Proper motion plot for area around Kepler Primary field')
+plt.scatter(confirmed_data['pmra'],confirmed_data['pmdec'], 0.1, 'k')
 
 ## Defines polygon vertices and path for area of interest
 #verts = [

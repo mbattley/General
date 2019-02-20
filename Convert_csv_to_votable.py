@@ -9,10 +9,10 @@ This short script can be used to convert standard csv files to astropy tables
 from astropy.table import Table
 from astropy.io.votable import from_table, writeto
 
-filename = "TESS_sector1.csv"
+filename = "BANYAN_XI-III_combined_members.csv"
 
 data = Table.read(filename, format='ascii.csv')
 
 votable = from_table(data)
 
-writeto(votable, "TESS_sector_1_targets.xml")
+writeto(votable, "BANYAN_XI-III_combined_members_TESS-sectors.xml")

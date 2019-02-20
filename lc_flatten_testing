@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Feb 19 13:25:36 2019
+
+Script to compare different flattening methods
+
+@author: Matthew Battley
+"""
+
+import numpy as np
+import eleanor
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+import logging
+import astropy.units as u
+from TESSselfflatten import TESSflatten
+
+# Assign star of interest
+star = eleanor.Source(tic=178155732, sector=3)
+#star = eleanor.Source(coords=(42.984364, -30.814529), sector=4)
+#star = eleanor.Source(gaia=4675352109658261376, sector=1)
+
+# Extract target pixel file, perform aperture photometry and complete some systematics corrections
+#data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=False)
+data = eleanor.TargetData(star)
+
+q = data.quality == 0
+
+# Set up lightcurve for Dave's flattening code ((nx3) array; time starts from zero)
+time_from_zero = data.time[q] - data.time[q][0]
+
+lcurve = np.vstack((time_from_zero, data.raw_flux[q], data.flux_err[q])).T
+
+# Run Dave's flattening code
+TESSflatten_lc = TESSflatten(lcurve)
+
+# Plot a lightcurve or a few...
+plt.figure()
+plt.plot(data.time[q], data.raw_flux[q]/np.median(data.raw_flux[q]) + 0.02, 'k', label = ' Raw flux')
+plt.plot(data.time[q], TESSflatten_lc/np.median(TESSflatten_lc), 'b', label = 'TESSflatten flux')
+plt.plot(data.time[q], data.corr_flux[q]/np.median(data.corr_flux[q]) - 0.02, 'r', label = 'Eleanor Corrected Flux')
+
+plt.ylabel('Normalized Flux')
+plt.xlabel('Time')
+plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
+plt.show()

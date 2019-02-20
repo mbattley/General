@@ -3,6 +3,8 @@
 """
 Created on Thu Jan 24 17:47:43 2019
 
+Script to use the Eleanor tool to interact with TESS FFIs
+
 @author: phrhzn
 """
 
@@ -31,6 +33,78 @@ def plot_lc(x,y,title,xlabel = 'Time', ylabel = 'Normalized Flux', folded = Fals
     else:
         plt.xlabel(xlabel)
     plt.title(title)
+    
+    
+#def plot_tpf(data, ax=None, frame=0, cadenceno=None, bkg=False, aperture_mask=None,
+#         show_colorbar=True, mask_color='pink', style='lightkurve', **kwargs):
+#    """Plot the pixel data for a single frame (i.e. at a single time).
+#
+#    The time can be specified by frame index number (`frame=0` will show the
+#    first frame) or absolute cadence number (`cadenceno`).
+#
+#    Parameters
+#    ----------
+#    ax : matplotlib.axes._subplots.AxesSubplot
+#        A matplotlib axes object to plot into. If no axes is provided,
+#        a new one will be generated.
+#    frame : int
+#        Frame number. The default is 0, i.e. the first frame.
+#    cadenceno : int, optional
+#        Alternatively, a cadence number can be provided.
+#        This argument has priority over frame number.
+#    bkg : bool
+#        If True, background will be added to the pixel values.
+#    aperture_mask : ndarray or str
+#        Highlight pixels selected by aperture_mask.
+#    show_colorbar : bool
+#        Whether or not to show the colorbar
+#    mask_color : str
+#        Color to show the aperture mask
+#    style : str
+#        Path or URL to a matplotlib style file, or name of one of
+#        matplotlib's built-in stylesheets (e.g. 'ggplot').
+#        Lightkurve's custom stylesheet is used by default.
+#    kwargs : dict
+#        Keywords arguments passed to `lightkurve.utils.plot_image`.
+#
+#    Returns
+#    -------
+#    ax : matplotlib.axes._subplots.AxesSubplot
+#        The matplotlib axes object.
+#    """
+#    if style == 'lightkurve' or style is None:
+#        style = MPLSTYLE
+#    if cadenceno is not None:
+#        try:
+#            frame = np.argwhere(cadenceno == self.cadenceno)[0][0]
+#        except IndexError:
+#            raise ValueError("cadenceno {} is out of bounds, "
+#                             "must be in the range {}-{}.".format(
+#                                 cadenceno, self.cadenceno[0], self.cadenceno[-1]))
+#    try:
+#        if bkg and np.any(np.isfinite(self.flux_bkg[frame])):
+#            pflux = self.flux[frame] + self.flux_bkg[frame]
+#        else:
+#            pflux = self.flux[frame]
+#    except IndexError:
+#        raise ValueError("frame {} is out of bounds, must be in the range "
+#                         "0-{}.".format(frame, self.shape[0]))
+#    with plt.style.context(style):
+#        img_title = 'Target ID: {}'.format(self.targetid)
+#        img_extent = (self.column, self.column + self.shape[2],
+#                      self.row, self.row + self.shape[1])
+#        ax = plot_image(pflux, ax=ax, title=img_title, extent=img_extent,
+#                        show_colorbar=show_colorbar, **kwargs)
+#        ax.grid(False)
+#    if aperture_mask is not None:
+#        aperture_mask = self._parse_aperture_mask(aperture_mask)
+#        for i in range(self.shape[1]):
+#            for j in range(self.shape[2]):
+#                if aperture_mask[i, j]:
+#                    ax.add_patch(patches.Rectangle((j+self.column, i+self.row),
+#                                                   1, 1, color=mask_color, fill=True,
+#                                                   alpha=.6))
+#    return ax
     
 def make_transit_periodogram(t,y,dy=0.01):
     """
@@ -300,12 +374,15 @@ def bin(data, binsize=13, method='mean'):
 
     return binned_lc
 
+###############################################################################
+# Main
+
 log = logging.getLogger(__name__)
 
 # Assign star of interest
 #star = eleanor.Source(tic=29857954, sector=1)
-#star = eleanor.Source(coords=(316.9615, -26.0967), sector=1)
-star = eleanor.Source(gaia=4675352109658261376, sector=1)
+star = eleanor.Source(coords=(319.94962, -58.1489), sector=1)
+#star = eleanor.Source(gaia=4675352109658261376, sector=1)
 
 # Extract target pixel file, perform aperture photometry and complete some systematics corrections
 #data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=False)
@@ -324,8 +401,8 @@ plt.xlabel('Time')
 plt.show()
 
 # View aperture
-plt.figure()
-plt.imshow(data.aperture)
+#plt.figure()
+#plt.imshow(data.aperture)
 
 #data.save(output_fn = 'tpf_from_ffi.fits', directory = '/Documents/PhD/Python')
 #data.save(output_fn = 'tpf_from_ffi.fits')
@@ -346,40 +423,40 @@ plt.imshow(data.aperture)
 ##Image(url='customApExample.gif')
 #
 ## Systematics corrections for custom aperture:
-corr_flux=eleanor.TargetData.jitter_corr(data, flux=data.raw_flux) # jitter
+#corr_flux=eleanor.TargetData.jitter_corr(data, flux=data.raw_flux) # jitter
 #pca_data = eleanor.TargetData.pca(data, flux=corr_flux, modes=4) # remove any shared systemtatics with nearby stars
 ##eleanor.TargetData.psf_lightcurve(data, model='gaussian', likelihood='poisson') #PSF modelling - needs tensorflow
 
 # Plot new lightcurve
-plot_lc(data.time[q],data.raw_flux[q],'Original lightcurve for Gaia 4675352109658261376', ylabel = 'Flux')
+#plot_lc(data.time[q],data.raw_flux[q],'Original lightcurve for WASP-73', ylabel = 'Flux')
 
 # Apply Savgol Filter
-flattened_data = flatten(data)
+#flattened_data = flatten(data)
 
 # Re-plot flattened data
-plot_lc(flattened_data.time[q],flattened_data.raw_flux[q],'Flattened lightcurve for Gaia 4675352109658261376')
+#plot_lc(flattened_data.time[q],flattened_data.raw_flux[q],'Flattened lightcurve for WASP-73')
 
 # Remove outliers via sigma clipping
-clean_data, outlier_mask = remove_outliers(flattened_data, sigma=5., return_mask = True)
+#clean_data, outlier_mask = remove_outliers(flattened_data, sigma=5., return_mask = True)
 
-q = q[~outlier_mask]
+#q = q[~outlier_mask]
 
 # Re-plot cleaned data
-plot_lc(clean_data.time[q],clean_data.raw_flux[q],'Lightcurve for Gaia 4675352109658261376 with outliers removed')
+#plot_lc(clean_data.time[q],clean_data.raw_flux[q],'Lightcurve for WASP-73 with outliers removed')
 
 # Find optimum period
-best_period, stats = make_transit_periodogram(t = clean_data.time, y = clean_data.raw_flux)
+#best_period, stats = make_transit_periodogram(t = clean_data.time, y = clean_data.raw_flux)
 
 # Fold data
-folded_data = fold(clean_data, period = 2.849375)
+#folded_data = fold(clean_data, period = 2.849375)
 #folded_data = fold(clean_data, period = 2.84834994)
-#folded_data = fold(clean_data, period = 1.4273)
+#folded_data = fold(clean_data, period = 4.08722)
 
 # Re-plot folded data
-plot_lc(folded_data.time[q],folded_data.raw_flux[q],'Folded Lightcurve for Gaia 4675352109658261376', folded = True)
+#plot_lc(folded_data.time[q],folded_data.raw_flux[q],'Folded Lightcurve for WASP-73 b', folded = True)
 
 # Bin data
-binned_data = bin(folded_data)
+#binned_data = bin(folded_data)
 
 # Plot binned data
-plot_lc(binned_data.time,binned_data.raw_flux,'Folded Lightcurve for binned Gaia 4675352109658261376', folded = True)
+#plot_lc(binned_data.time,binned_data.raw_flux,'Folded Lightcurve for binned WASP-73 b', folded = True)
