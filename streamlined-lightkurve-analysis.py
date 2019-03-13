@@ -24,6 +24,7 @@ from photutils import MMMBackground, MeanBackground, MedianBackground, ModeEstim
 from astropy.stats import SigmaClip
 from transitleastsquares import transitleastsquares
 from transitleastsquares import transit_mask
+from bls import BLS
 
 
 def make_transit_periodogram(t, y, target_ID, save_path, sector, dy=0.01):
@@ -59,18 +60,62 @@ def make_transit_periodogram(t, y, target_ID, save_path, sector, dy=0.01):
     #best_fit = periods[np.argmax(power)]
     #print('Best Fit Period: {} days'.format(best_fit))
 
-def phase_fold_plot(t, lc, period, epoch, title):
+def bls_search(lc, target_ID, save_path):
+    """
+    Perform bls analysis using foreman-mackey's bls.py function
+    """
+    durations = np.linspace(0.05, 0.2, 22) * u.day
+    model = BLS(lc.time*u.day, lc.flux)
+    results = model.autopower(durations, frequency_factor=5.0)
+    
+    # Find the period and epoch of the peak
+    index = np.argmax(results.power)
+    period = results.period[index]
+    t0 = results.transit_time[index]
+    duration = results.duration[index]
+    transit_info = model.compute_stats(period, duration, t0)
+    
+    epoch = transit_info['transit_times'][0]
+    
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    
+    # Highlight the harmonics of the peak period
+    ax.axvline(period.value, alpha=0.4, lw=3)
+    for n in range(2, 10):
+        ax.axvline(n*period.value, alpha=0.4, lw=1, linestyle="dashed")
+        ax.axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed")
+    
+    # Plot the periodogram
+    ax.plot(results.period, results.power, "k", lw=0.5)
+    
+    ax.set_xlim(results.period.min().value, results.period.max().value)
+    ax.set_xlabel("period [days]")
+    ax.set_ylabel("log likelihood")
+    ax.set_title('{} - BLS Periodogram'.format(target_ID))
+    plt.savefig(save_path + '{} - BLS Periodogram.png'.format(target_ID))
+    plt.close(fig)
+    
+    
+    # Fold by most significant period
+    phase_fold_plot(lc.time*u.day, lc.flux, period, epoch, target_ID, save_path, title='{} Lightcurve folded by {} days'.format(target_ID, period))
+    
+    return results, transit_info
+    
+
+def phase_fold_plot(t, lc, period, epoch, target_ID, save_path, title):
     """
     Phase-folds the lc by the given period, and plots a phase-folded light-curve
     for the object of interest
     """
     phase = np.mod(t-epoch-period/2,period)/period 
     
-    plt.figure()
+    phase_fold_fig  = plt.figure()
     plt.scatter(phase, lc, c='k', s=2)
     plt.title(title)
     plt.xlabel('Phase')
     plt.ylabel('Normalized Flux')
+    plt.savefig(save_path + '{} - Phase fold plot.png'.format(target_ID))
+    plt.close(phase_fold_fig)
     
 def transit_dot_times(epoch, p_period, lc_time):
     """
@@ -191,13 +236,13 @@ def lightkurve_analysis(filename, target_ID, save_path):
     #phase_fold_plot(lc.time, TESSflatten_lc, period_p1, epoch_p1, title='TOI-440 Lightcurve folded by {} days - Sector 5'.format(period_p1))
     #phase_fold_plot(lc.time, TESSflatten_lc, period_p2, epoch_p2, title='TOI-396 Lightcurve folded by {} days - Sector 3'.format(period_p2))
 
-    ## Clip out dodgy jitter data
-    #lc = lc[(lc.time < 1382) | (lc.time > 1384)]
-    #
-    ## Find optimum period
-    stats, best_fit_period = make_transit_periodogram(t = lc.time, y = TESSflatten_lc, target_ID = target_ID, save_path = save_path, sector = tpf.sector)
-    #
-    ## Re-plot
+    # Find optimum period
+    #stats, best_fit_period = make_transit_periodogram(t = lc.time, y = TESSflatten_lc, target_ID = target_ID, save_path = save_path, sector = tpf.sector)
+    
+    #Perform BLS search
+    bls_search(lc, target_ID, save_path)
+    
+    # Re-plot
     #lc.plot()
     
     # Phase fold
@@ -238,15 +283,10 @@ for target_ID in target_list:
         plt.title('Combined lightcurve for {}'.format(target_ID))
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time - 2457000 [BTJD days]')
-        plt.savefig(save_path + '{} - Combined_lightcurve2.png'.format(target_ID))
+        plt.savefig(save_path + '{} - Combined_lightcurve.png'.format(target_ID))
         plt.close(combined_lc_fig)
+        #stats, best_fit_period = make_transit_periodogram(t = combined_lc.time, y = combined_lc.flux, target_ID = target_ID, save_path = save_path, sector = 'Multiple')
+        bls_search(combined_lc, target_ID, save_path)
         
 end = time.time()
 print(end - start)
-
-#lightkurve_analysis(filename, target_ID, save_path)
-    
-# For star in target list:
-#   If only one filename, run usual lightkurve analysis     
-#   If more than one filename in sector 1 filenames:
-#       Perform lightkurve analysis for each then combine all lightcurves into 1
