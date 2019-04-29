@@ -69,7 +69,7 @@ def phase_fold_plot(t, lc, period, epoch, title, save_path = '/Users/mbattley/Do
     plt.title(title)
     plt.xlabel('Phase')
     plt.ylabel('Normalized Flux')
-    plt.savefig(save_path + '{} - Phase folded lightcurve.png'.format(target_ID))
+#    plt.savefig(save_path + '{} - Phase folded lightcurve.png'.format(target_ID))
     
 def transit_dot_times(epoch, p_period, lc_time):
     """
@@ -133,7 +133,7 @@ def bkg_subtraction(time, flux, scope="tpf", sigma=3):
 
 # Get target pixel file
     
-target_ID = 'TOI 396'
+target_ID = 'JO700-6203'
 #save_path = '/home/astro/phrhzn/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 1/' # On Desktop
 save_path = '/Users/mbattley/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 1/' #On laptop
 
@@ -144,11 +144,12 @@ save_path = '/Users/mbattley/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 
 #tpf = lightkurve.search_targetpixelfile("21:06:31.65 -26:41:34.29 ", sector=1).download()
 #tpf = lightkurve.search.open('tess-s0001-1-4_316.63187500000004_-26.692858333333334_10x10_astrocut.fits')
 #tpf = TessTargetPixelFile('https://archive.stsci.edu/hlsps/tess-data-alerts/hlsp_tess-data-alerts_tess_phot_00261136679-s01_tess_v1_tp.fits')
-tpf = lightkurve.search.open('tess-s0003-2-2_42.984364_-30.814529_10x15_astrocut.fits') #- TOI 396
+#tpf = lightkurve.search.open('tess-s0003-2-2_42.984364_-30.814529_10x15_astrocut.fits') #- TOI 396
 #tpf = lightkurve.search.open('tess-s0004-2-1_42.984364_-30.814529_10x15_astrocut.fits')
 #tpf = lightkurve.search.open('tess-s0001-2-4_319.9496107691067_-58.1488869525922_11x11_astrocut.fits') # Wasp 73
 #tpf = lightkurve.search.open('tess-s0001-2-4_326.980375_-52.9306389_11x11_astrocut.fits')
 #lc = lightkurve.search_tesscut(" TIC 178155732", sector =3)
+tpf = lightkurve.search.open('tess-s0003-4-4_105.16877916666667_-62.061588888888885_11x11_astrocut.fits')
 #
 # Alternatively: Get tpf from TESS FFI cutouts
 #cutout_coord = SkyCoord(42.984364, -30.814529, unit="deg")
@@ -170,26 +171,28 @@ median_image = np.nanmedian(tpf.flux, axis=0)
 aperture_mask = median_image > np.nanpercentile(median_image, 85)
 
 ##Create my own mask (if necessary)
-##my_mask= np.array([[False, False, False, False, False, False, False, False, False,
-##        False],
-##       [False, False, False, False, False, False, True, True, True,
-##        False],
-##       [False, False, False, False, False, False, True, True, True,
-##        False],
-##       [False, False, False, False, False, False, True, True, True,
-##        False],
-##       [False, False, False, False, False, False, False, False, False,
-##        False],
-##       [False, False, False, False, False,  False,  False,  False, False,
-##        False],
-##       [False, False, False, False,  False,  False,  False,  False,  False,
-##        False],
-##       [False, False, False, False,  False,  False,  False,  False,  False,
-##        False],
-##       [False, False, False, False,  False,  False,  False,  False,  False,
-##        False],
-##       [False, False, False, False,  False,  False,  False,  False,  False,
-##        False]])
+my_mask= np.array([[False, False, False, False, False, False, False, False, False,
+        False, False],
+       [False, False, False, False, False, False, False, False, False,
+        False, False],
+       [False, False, False, False, False, False, False, False, False,
+        False, False],
+       [False, False, False, False, False, False, False, False, False,
+        False, False],
+       [False, False, False, False, False, False, False, False, False,
+        False, False],
+       [False, True, True, False, False,  False,  False,  False, False,
+        False, False],
+       [True, True, True, True,  False,  False,  False,  False,  False,
+        False, False],
+       [False, True, True, False,  False,  False,  False,  False,  False,
+        False, False],
+       [False, False, False, False,  False,  False,  False,  False,  False,
+        False, False],
+       [False, False, False, False,  False,  False,  False,  False,  False,
+        False, False],
+        [False, False, False, False,  False,  False,  False,  False,  False,
+        False, False]])
 #
 
 #my_mask = np.array([[False, False, False, False, False],
@@ -198,7 +201,7 @@ aperture_mask = median_image > np.nanpercentile(median_image, 85)
 #                    [False, False, True, True, False],
 #                    [False, False, False, False, False]])
 
-#aperture_mask = my_mask
+aperture_mask = my_mask
     
 tpf_flux_bkg = bkg_subtraction(tpf.time, tpf.flux)
 
@@ -335,7 +338,7 @@ results = model.autopower(durations, frequency_factor=5.0)
 
 # Find the period and epoch of the peak
 index = np.argmax(results.power)
-period = results.period[index]/2
+period = results.period[index]
 t0 = results.transit_time[index]
 duration = results.duration[index]
 transit_info = model.compute_stats(period, duration, t0)
@@ -357,7 +360,7 @@ ax.set_xlim(results.period.min().value, results.period.max().value)
 ax.set_xlabel("period [days]")
 ax.set_ylabel("log likelihood")
 ax.set_title('{} - BLS Periodogram'.format(target_ID))
-fig.savefig(save_path + '{} - BLS Periodogram.png'.format(target_ID))
+#fig.savefig(save_path + '{} - BLS Periodogram.png'.format(target_ID))
 
 
 # Fold by most significant period
@@ -365,6 +368,6 @@ phase_fold_plot(lc.time*u.day, TESSflatten_lc, period, epoch, title='{} Lightcur
 
 
 lc.flux = TESSflatten_lc
-lc.fold(period=3.586).scatter()
-lc.fold(period=5.97294).scatter()
-lc.fold(period=11.23).scatter()
+#lc.fold(period=3.586).scatter()
+#lc.fold(period=5.97294).scatter()
+#lc.fold(period=11.23).scatter()

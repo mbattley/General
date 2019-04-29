@@ -114,7 +114,8 @@ def print_spectral_types(spectral_type):
     given table
     """
     
-    O, B, A, F, G, K, M = 0, 0, 0, 0, 0, 0, 0
+    O, B, A, F, G, K, M, L, T = 0, 0, 0, 0, 0, 0, 0, 0, 0
+    weird_type_list = []
     
     for i, x in enumerate(spectral_type):
         if spectral_type[i] == '':
@@ -133,8 +134,15 @@ def print_spectral_types(spectral_type):
             K += 1
         elif 'M' in spectral_type[i]:
             M += 1
+        elif 'L' in spectral_type[i]:
+            L += 1
+        elif 'T' in spectral_type[i]:
+            T += 1
+        else:
+            weird_type_list.append(spectral_type[i])
 
-    print("O: {}, B: {}, A: {}, F: {}, G: {}, K: {}, M: {}".format(O,B,A,F,G,K,M))
+    print("O: {}, B: {}, A: {}, F: {}, G: {}, K: {}, M: {}, L: {}, T: {}".format(O,B,A,F,G,K,M,L,T))
+    return weird_type_list
 
 def convergent_point(filename):
     """

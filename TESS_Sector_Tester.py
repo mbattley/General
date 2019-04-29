@@ -14,6 +14,7 @@ whether it will be viewed, and if so, in which sectors.
 
 import astropy.table as tab
 import csv
+import pickle
 #import numpy as np
 #import matplotlib.pyplot as plt
 #import timeit
@@ -36,7 +37,10 @@ for i in sector_array:
     for j, data in enumerate(table_data[i]):
         if data != 0:
             target_dict[i].append(table_data['main_id'][j])
-            
+
+with open('TESS_YSO_sector_dict.pkl', 'wb') as f:
+    pickle.dump(target_dict, f, pickle.HIGHEST_PROTOCOL)
+ 
 # Save dictionary to csv
 w = csv.writer(open("TESS_sector_targets.csv", "w"))
 for key, val in target_dict.items():

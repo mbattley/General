@@ -184,19 +184,20 @@ def lightkurve_analysis(filename, target_ID, save_path):
     # Plot and save tpf
     tpf_plot = tpf.plot(aperture_mask = aperture_mask).get_figure()
     tpf_plot.savefig(save_path + '{} - Sector {} - tpf plot.png'.format(target_ID, tpf.sector))
-#    plt.close(tpf_plot)
+    plt.close(tpf_plot)
     
     # Remove outliers and save
-    sigma_cut_lc_fig = tpf.to_lightcurve(aperture_mask = aperture_mask).remove_outliers(sigma = 3).plot().get_figure()
+    sigma_cut_lc_fig = tpf.to_lightcurve(aperture_mask = aperture_mask).remove_outliers(sigma = 3).scatter(s=2).get_figure()
+    plt.title('{} - Sector {} - raw FFI lc (SAP) - 3 sigma cut flux.png'.format(target_ID, tpf.sector))
     sigma_cut_lc_fig.savefig(save_path + '{} - Sector {} - 3 sigma lightcurve.png'.format(target_ID, tpf.sector))
-#    plt.close(sigma_cut_lc_fig)
+    plt.close(sigma_cut_lc_fig)
     
     # Convert to lightcurve object
     lc = tpf.to_lightcurve(aperture_mask = aperture_mask).remove_outliers(sigma = 3)
-    
-    # Set up lightcurve for Dave's flattening code ((nx3) array; time starts from zero)
-    time_from_zero = lc.time - lc.time[0]
-    lcurve = np.vstack((time_from_zero, lc.flux, lc.flux_err)).T
+#    
+#    # Set up lightcurve for Dave's flattening code ((nx3) array; time starts from zero)
+#    time_from_zero = lc.time - lc.time[0]
+#    lcurve = np.vstack((time_from_zero, lc.flux, lc.flux_err)).T
     
     # Adding in dots under each transit
     # Sector 1 Epochs
@@ -219,18 +220,18 @@ def lightkurve_analysis(filename, target_ID, save_path):
     #p2_marker_y = [0.999]*len(p2_times)
     
     ## Run Dave's flattening code
-    TESSflatten_fig = plt.figure()
-    TESSflatten_lc = TESSflatten(lcurve, winsize = 3.5, stepsize = 0.15, gapthresh = 0.1)
-    plt.scatter(lc.time, TESSflatten_lc, c = 'k', s = 1, label = 'TESSflatten flux')
-    #plt.scatter(p1_times, p1_marker_y, c = 'r', s = 5, label = 'Planet 1')
-    #plt.scatter(p2_times, p2_marker_y, c = 'g', s = 5, label = 'Planet 2')
-    plt.title('{} with TESSflatten - Sector {}'.format(tpf.targetid, tpf.sector))
-    plt.ylabel('Normalized Flux')
-    plt.xlabel('Time - 2457000 [BTJD days]')
-    plt.savefig(save_path + '{} - Sector {} - TESSflatten lightcurve.png'.format(target_ID, tpf.sector))
+#    TESSflatten_fig = plt.figure()
+#    TESSflatten_lc = TESSflatten(lcurve, winsize = 3.5, stepsize = 0.15, gapthresh = 0.1)
+#    plt.scatter(lc.time, TESSflatten_lc, c = 'k', s = 1, label = 'TESSflatten flux')
+#    #plt.scatter(p1_times, p1_marker_y, c = 'r', s = 5, label = 'Planet 1')
+#    #plt.scatter(p2_times, p2_marker_y, c = 'g', s = 5, label = 'Planet 2')
+#    plt.title('{} with TESSflatten - Sector {}'.format(tpf.targetid, tpf.sector))
+#    plt.ylabel('Normalized Flux')
+#    plt.xlabel('Time - 2457000 [BTJD days]')
+#    plt.savefig(save_path + '{} - Sector {} - TESSflatten lightcurve.png'.format(target_ID, tpf.sector))
 #    plt.close(TESSflatten_fig)
     
-    lc.flux = TESSflatten_lc
+#    lc.flux = TESSflatten_lc
     
     # Phase folding by periods of suspected planets
     #phase_fold_plot(lc.time, TESSflatten_lc, period_p1, epoch_p1, title='TOI-440 Lightcurve folded by {} days - Sector 5'.format(period_p1))
@@ -240,7 +241,7 @@ def lightkurve_analysis(filename, target_ID, save_path):
     #stats, best_fit_period = make_transit_periodogram(t = lc.time, y = TESSflatten_lc, target_ID = target_ID, save_path = save_path, sector = tpf.sector)
     
     #Perform BLS search
-    bls_search(lc, target_ID, save_path)
+#    bls_search(lc, target_ID, save_path)
     
     # Re-plot
     #lc.plot()
@@ -253,9 +254,13 @@ def lightkurve_analysis(filename, target_ID, save_path):
 start = time.time()    
 
 #save_path = '/Users/mbattley/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 1/' # laptop
-save_path = '/home/astro/phrhzn/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 1/' # Desktop
+save_path = '/home/astro/phrhzn/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector-1/For comparison to 2min/' # Desktop
 #target_ID = 'HD 207043'
 #filename = 'TESS_Sector_1_cutouts/tess-s0001-2-4_326.981079166667_-52.9310083333333_11x11_astrocut.fits'
+
+# Set overall figsize
+plt.rcParams["figure.figsize"] = (8.5,4)
+plt.rcParams['savefig.dpi'] = 120
 
 with open('Sector_1_targets.pkl', 'rb') as f:
     target_list = pickle.load(f)
@@ -264,7 +269,10 @@ with open('Sector_1_target_filenames.pkl', 'rb') as f:
     target_filenames = pickle.load(f)
 f.close()
 
-target_list = ['J0700-6203']
+target_list = ["HD 20888","HIP 105388","AO Men", "AB Dor Aab", "HD 45270 AB", "HIP 32235", "HIP 1993", "HD 24636", 
+               "HIP 107947", "HIP 12394", "AB Pic", "HIP 1113", "2MASS J20333759-2556521", "HIP 33737", 
+               "2MASS J23261069-7323498","HIP 22295", "2MASS J22424896-7142211", "RBS 38", "HIP 107345", "HIP 116748 A", 
+               "HIP 1481"]
 
 for target_ID in target_list:
     filenames = target_filenames[target_ID]
@@ -277,17 +285,17 @@ for target_ID in target_list:
         for filename in filenames[1:]:
             sector_lc = lightkurve_analysis(filename, target_ID, save_path)
             combined_lc = combined_lc.append(sector_lc)
-        combined_lc_fig = plt.figure()
-        plt.scatter(combined_lc.time, combined_lc.flux, c = 'k', s = 1)
-        #plt.scatter(p1_times, p1_marker_y, c = 'r', s = 5, label = 'Planet 1')
-        #plt.scatter(p2_times, p2_marker_y, c = 'g', s = 5, label = 'Planet 2')
-        plt.title('Combined lightcurve for {}'.format(target_ID))
-        plt.ylabel('Normalized Flux')
-        plt.xlabel('Time - 2457000 [BTJD days]')
-        plt.savefig(save_path + '{} - Combined_lightcurve.png'.format(target_ID))
+#        combined_lc_fig = plt.figure()
+#        plt.scatter(combined_lc.time, combined_lc.flux, c = 'k', s = 1)
+#        #plt.scatter(p1_times, p1_marker_y, c = 'r', s = 5, label = 'Planet 1')
+#        #plt.scatter(p2_times, p2_marker_y, c = 'g', s = 5, label = 'Planet 2')
+#        plt.title('Combined lightcurve for {}'.format(target_ID))
+#        plt.ylabel('Normalized Flux')
+#        plt.xlabel('Time - 2457000 [BTJD days]')
+#        plt.savefig(save_path + '{} - Combined_lightcurve.png'.format(target_ID))
 #        plt.close(combined_lc_fig)
         #stats, best_fit_period = make_transit_periodogram(t = combined_lc.time, y = combined_lc.flux, target_ID = target_ID, save_path = save_path, sector = 'Multiple')
-        bls_search(combined_lc, target_ID, save_path)
+#        bls_search(combined_lc, target_ID, save_path)
         
 end = time.time()
 print(end - start)
