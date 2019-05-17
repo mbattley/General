@@ -237,7 +237,7 @@ def polyflatten(lc,winsize,stepsize,polydegree,niter,sigmaclip,gapthreshold,t0=0
             baseline = dopolyfit(winregion,polydegree,niter,sigmaclip)
 
             lcdetrend[boxlowbound:boxhighbound] = lc[boxlowbound:boxhighbound,1] / np.polyval(baseline,lc[boxlowbound:boxhighbound,0])
-
+            
         else:
 
             lcdetrend[boxlowbound:boxhighbound] = np.ones(boxhighbound-boxlowbound)

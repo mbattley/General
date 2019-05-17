@@ -24,7 +24,7 @@ def download_TESS_cutouts_ID(target_ID_list, cutout_size = [11,11]):
         cutout_size             [2 x 1] list      postcard cutout size
     
     Output:
-        target_filenames         n x 2 dictionary
+        target_filenames         n x 2 dictionary with target ids and target filenames
     """
 
     filename = "BANYAN_XI-III_combined_members.csv"
@@ -37,8 +37,9 @@ def download_TESS_cutouts_ID(target_ID_list, cutout_size = [11,11]):
         i = list(data['main_id']).index(target_id)
         ra = data['ra'][i]
         dec = data['dec'][i]
-        cutout_coord = SkyCoord(ra, dec, unit="deg")
-        manifest = Tesscut.download_cutouts(cutout_coord, cutout_size, path = './TESS_Sector_1_cutouts')
+        object_coord = SkyCoord(ra, dec, unit="deg")
+        manifest = Tesscut.download_cutouts(object_coord, cutout_size, path = './TESS_Sector_1_cutouts')
+        sector_info = Tesscut.get_sectors(object_coord)
         if len(manifest['Local Path']) == 1:
             target_filenames[target_id] = manifest['Local Path'][0][2:]
         elif len(manifest['Local Path']) > 1:
@@ -48,7 +49,7 @@ def download_TESS_cutouts_ID(target_ID_list, cutout_size = [11,11]):
         else:
             print('Cutout for target {} can not be downloaded'.format(target_id))
     
-    return target_filenames
+    return target_filenames, sector_info
 
 def download_TESS_cutouts_coords(ra, dec, cutout_size = [11,11]):
     """

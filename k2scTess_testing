@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu May  2 14:36:57 2019
+
+@author: phrhzn
+"""
+
+import k2scTess
+
+k2scTess 'tess-s0001-4-3_105.16877916666667_-62.061588888888885_11x11_astrocut.fits'

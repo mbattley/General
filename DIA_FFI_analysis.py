@@ -88,6 +88,7 @@ plt.xlabel('Time - 2457000 [BTJD days]')
 #plt.close(TESSflatten_fig)
 plt.show()
 
+# Create periodogram
 durations = np.linspace(0.05, 0.2, 22) * u.day
 model = BLS(lc[:,0]*u.day, lc[:,1])
 results = model.autopower(durations, frequency_factor=5.0)
