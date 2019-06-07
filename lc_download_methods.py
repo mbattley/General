@@ -5,15 +5,12 @@ Created on Wed May  8 16:25:31 2019
 
 Collects different functions for downloading and preparing lightcurves via 
 different pathways
-
 Inputs:
     - target_ID for object
     - sector of interest
     - [OPTIONAL] csv file containing target list and their respective TIC number
-
 n.b. all lightcurves returned in lightkurvefile-like format 
 i.e. time = lc.time, flux = lc.flux, flux_err = lc.flux_err
-
 @author: Matthew Battley
 """
 
@@ -133,21 +130,23 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
          tic = TIC_table['ID'][0]
          
     
-    object_coord = SkyCoord(ra, dec, unit="deg")
-    sector_info = Tesscut.get_sectors(object_coord)
-    
-    for i in range(len(sector_info)):
-        if sector_info[i][1] == 1:
-            index = i
-            
-    camera = sector_info[index][2]
-    ccd = sector_info[index][3]
-    
+#    object_coord = SkyCoord(ra, dec, unit="deg")
+#    sector_info = Tesscut.get_sectors(object_coord)
+#    
+#    for i in range(len(sector_info)):
+#        if sector_info[i][1] == 1:
+#            index = i
+#            
+#    camera = sector_info[index][2]
+#    ccd = sector_info[index][3]
+#    
 #    star = eleanor.Source(coords=(ra, dec), sector=1)
 ##    camera = 
 #    ccd = star.chip
     
-    filename = '{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
+#    filename = '{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
+    filename = '410214986_sector01_3_2.lc'
+
     
     try:
         lines = loadtxt(filename, delimiter = ' ') # For when in local directory
@@ -172,7 +171,7 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
         
         lc = lightkurve.LightCurve(time = DIA_lc[0],flux = norm_flux, flux_err = DIA_lc[2], targetid = target_ID)
         
-        return lc
+        return lc, filename
     except:
         print('The file {} does not exist - difference imaging data not available for {}'.format(filename,target_ID))
 
