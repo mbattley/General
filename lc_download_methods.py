@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed May  8 16:25:31 2019
-
 Collects different functions for downloading and preparing lightcurves via 
 different pathways
 Inputs:
@@ -105,12 +104,12 @@ def raw_FFI_lc_download(target_ID, sector, plot_tpf = False, plot_lc = False, sa
     
     return lc_30min
 
-def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/Full Injected Transits Test/'):
+def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, save_path = '/home/u1866052/Lowess detrending/TESS S2/'):
     """
     Downloads and returns 30min cadence lightcurves based on Oelkers & Stassun
     difference imaging analysis method of lightcurve extraction
     """
-    DIAdir = '/ngts/scratch/tess/FFI-LC/S1/clean/'
+    DIAdir = '/ngts/scratch/tess/FFI-LC/S{}/clean/'.format(sector)
     
     if from_file == True:
         # reads input table for targets
@@ -120,7 +119,7 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
         i = list(table_data['main_id']).index(target_ID)
         ra = table_data['ra'][i]
         dec = table_data['dec'][i]
-        camera = table_data['S{}'.format(sector)][i]
+        #camera = table_data['S{}'.format(sector)][i]
         tic = table_data['MatchID'][i]
     else:
          # Find ra, dec and tic # via the TIC (typically based on Gaia DR2)
@@ -134,7 +133,7 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
     sector_info = Tesscut.get_sectors(object_coord)
     
     for i in range(len(sector_info)):
-        if sector_info[i][1] == 1:
+        if sector_info[i][1] == sector:
             index = i
             
     camera = sector_info[index][2]
@@ -144,7 +143,8 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
 ##    camera = 
 #    ccd = star.chip
     
-    filename = '{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
+    filename = DIAdir+'{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
+#    filename = '{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
 #    filename = '410214986_sector01_3_2.lc'
 
     
@@ -160,16 +160,18 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
         
         # Plot Difference imaged data
         if plot_lc == True:
+            
             diffImage_fig = plt.figure()
             plt.scatter(DIA_lc[0], norm_flux, s=1, c= 'k')
             plt.ylabel('Normalized Flux')
             plt.xlabel('Time')
             plt.title('{} - Difference imaged light curve from FFIs'.format(target_ID))
-            diffImage_fig.savefig(save_path + '{} - Sector {} - DiffImage flux.png'.format(target_ID, sector))
+            #diffImage_fig.savefig(save_path + '{} - Sector {} - DiffImage flux.png'.format(target_ID, sector))
             plt.close(diffImage_fig)
-#            plt.show()
+            diffImage_fig.show()
         
         lc = lightkurve.LightCurve(time = DIA_lc[0],flux = norm_flux, flux_err = DIA_lc[2], targetid = target_ID)
+
         
         return lc, filename
     except:
@@ -199,7 +201,7 @@ def eleanor_lc_download(target_ID, sector, plot_raw = False, plot_corr = False, 
         tic = TIC_table['ID'][0]
     
     # Locates star in data
-    star = eleanor.Source(coords=(ra, dec), sector = sector)
+    star = eleanor.Source(tic, sector = sector)
     #star = eleanor.Source(coords=(49.4969, -66.9268), sector=1)
     
     # Extract target pixel file, perform aperture photometry and complete some systematics corrections
@@ -255,4 +257,5 @@ def eleanor_lc_download(target_ID, sector, plot_raw = False, plot_corr = False, 
     #psf_eleanor_fig.savefig(save_path + '{} - Sector {} - eleanor psf flux.png'.format(target_ID, sector))
     #plt.show()
     
-    return raw_lc, corr_lc, pca_lc #,psf_lc
+    return raw_lc, corr_lc, pca_lc #, psf_lc
+
