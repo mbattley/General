@@ -21,7 +21,8 @@ import pickle
 
 # Read data from table
 Table = tab.Table
-table_data = Table.read('BANYAN_XI-III_combined_members_TESS-sectors.xml')
+#table_data = Table.read('BANYAN_XI-III_combined_members_TESS-sectors.xml')
+table_data = Table.read("BANYAN_XI-III_members_with_TIC.csv" , format='ascii.csv')
 
 # Build table of targets for each sector
 table_data['sector_list'] = [None]*len(table_data['main_id'])
@@ -38,10 +39,15 @@ for i in sector_array:
         if data != 0:
             target_dict[i].append(table_data['main_id'][j])
 
-with open('TESS_YSO_sector_dict.pkl', 'wb') as f:
+with open('TESS_YSO_sector_dict2.pkl', 'wb') as f:
     pickle.dump(target_dict, f, pickle.HIGHEST_PROTOCOL)
  
 # Save dictionary to csv
-w = csv.writer(open("TESS_sector_targets.csv", "w"))
-for key, val in target_dict.items():
-    w.writerow([key, val])
+#w = csv.writer(open("TESS_sector_targets.csv", "w"))
+#for key, val in target_dict.items():
+#    w.writerow([key, val])
+    
+sector3_targets = target_dict['S3']
+
+with open('Sector_3_targets_from_TIC_list.pkl', 'wb') as f:
+    pickle.dump(sector3_targets, f, pickle.HIGHEST_PROTOCOL)

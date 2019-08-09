@@ -342,6 +342,7 @@ def TESSflatten(lcurve, kind='poly', split=True, highcut=12., winsize=3.5,
             end = np.searchsorted(lcurve[:,0],(orbit+1)*13.94)
 
             lcseg = lcurve[start:end,:]
+            print('Built segment')
 
             
 
@@ -360,14 +361,19 @@ def TESSflatten(lcurve, kind='poly', split=True, highcut=12., winsize=3.5,
                 lcseg_flat = polyflatten(lcseg,winsize,stepsize,polydeg,niter,
 
                 							sigmaclip,gapthresh)[:,1]
+                print('passed poly')
 
              
 
             flatlc = np.hstack((flatlc,lcseg_flat))
 
     flatlc = np.array(flatlc)
+    #long_flatlc = flatlc.append(0)
+    print('got flatlc')
+    length_lc = len(flatlc[1:])
+    print('lc length = {}'.format(length_lc))
 
-    return flatlc[1:]         
+    return flatlc[1:]         # for 2min use [0:], but for 30min use [1:]
 
 
 

@@ -275,7 +275,8 @@ Table = tab.Table
 #table_data = Table.read('OB2_Gaia_Zeeuw_Match_dist')
 #table_data = Table.read('Pleiades_data_GaiaDR2')
 #table_data = Table.read('Hyades_data')
-table_data = Table.read('Reduced_Hyades_Data_with_RV')
+#table_data = Table.read('Reduced_Hyades_Data_with_RV')
+table_data = Table.read('Octans_area_data_dist.vot')
 
 # Allows user to specify different names for information rows 
 ra_key = 'ra'
@@ -283,7 +284,7 @@ dec_key = 'dec'
 pmra_key = 'pmra'
 pmdec_key = 'pmdec'
 d_key = 'rest'
-rv_key = 'radvel'
+rv_key = 'radial_velocity'
 #plx_key = 'parallax'
 
 # Change from unrecognisable unit names in file
@@ -296,7 +297,7 @@ table_data[rv_key].unit = 'km/s'
 # Assembles age matrix (in this case, quite approximate, broken only into Sco_Cen groups)
 #table_data['age'] = np.array(['None']*len(table_data['ra_1'])) # OB2
 #table_data['age'] = np.array([100]*len(table_data[pmra_key])) #Pleiades age ~100 Mya
-table_data['age'] = np.array([625]*len(table_data[pmra_key])) #Reduced Hyades
+#table_data['age'] = np.array([625]*len(table_data[pmra_key])) #Reduced Hyades
 #US_age = 11 # Myr
 #UCL_age = 16 # Myr
 #LCC_age = 17 #Myr
@@ -312,7 +313,7 @@ table_data['age'] = np.array([625]*len(table_data[pmra_key])) #Reduced Hyades
 #    else:
 #        table_data['age'][i] = LCC_age
 
-ages = [float(i) for i in table_data['age']] # (Myr)
+#ages = [float(i) for i in table_data['age']] # (Myr)
 
 # Input sky coordinates for all stars
 #c_icrs_hipparcos = SkyCoord(ra = table_data['ra_1'], dec = table_data['dec_1'], pm_ra_cosdec = table_data['pmra_1'], pm_dec = table_data['pmdec_1'])
@@ -335,7 +336,7 @@ table_data['pm_b'] = c_galactic_hipparcos.pm_b
 omega_x = -0.086 # +/- 0.025 mas/yr
 omega_y = -0.114 # +/- 0.025 mas/yr
 omega_z = -0.037 # +/- 0.025 mas/yr
-
+#
 for i, dp in enumerate(table_data[pmra_key]):
     if table_data['phot_g_mean_mag'][i] <= 13:
         table_data[pmra_key][i]  = dp + omega_x*sin(table_data[dec_key][i]*np.pi/180)*cos(table_data[ra_key][i]*np.pi/180) + omega_y*sin(table_data[dec_key][i]*np.pi/180)*sin(table_data[ra_key][i]*np.pi/180) - omega_z*cos(table_data[dec_key][i]*np.pi/180)
@@ -345,12 +346,12 @@ for i, dp in enumerate(table_data[pmra_key]):
 ######################## GALACTIC LAT/LONG PLOTS ##############################
 
 # Calculates approximate initial distribution of OB2 members given approximate association age
-original_l, original_b = old_position_angle(table_data['l'], table_data['b'], table_data['pm_l_cosb'],table_data['pm_b'],ages)
-
-# Compensates for going around multiple times
-for i, data in enumerate(original_l):
-    if data >= 360:
-        original_l[i] = data - 360*(data//360)
+#original_l, original_b = old_position_angle(table_data['l'], table_data['b'], table_data['pm_l_cosb'],table_data['pm_b'],ages)
+#
+## Compensates for going around multiple times
+#for i, data in enumerate(original_l):
+#    if data >= 360:
+#        original_l[i] = data - 360*(data//360)
 #    if data < 0:
 #        original_l[i] = data + 360*(data//360)
 #
@@ -465,10 +466,10 @@ u_g, v_g, w_g = uvw(ra = table_data[ra_key], dec = table_data[dec_key], d = tabl
 
 
 # Calculate old XYZ positions
-vel_conv = 1.02269 #((pc/Myr)/(km/s)) --- conversion factor to change velocity units from km/s to pc/Myr 
-x_g_old = x_g - u_g*vel_conv*ages
-y_g_old = y_g - v_g*vel_conv*ages
-z_g_old = z_g - w_g*vel_conv*ages
+#vel_conv = 1.02269 #((pc/Myr)/(km/s)) --- conversion factor to change velocity units from km/s to pc/Myr 
+#x_g_old = x_g - u_g*vel_conv*ages
+#y_g_old = y_g - v_g*vel_conv*ages
+#z_g_old = z_g - w_g*vel_conv*ages
 
 #Plots XYZ positions at current time
 #spatial_plot(x_g, y_g, 1, 'Galactic XY Position of OB2 members \n Current time', 'X (pc)', 'Y (pc)')
@@ -481,13 +482,13 @@ z_g_old = z_g - w_g*vel_conv*ages
 #spatial_plot(y_g_old, z_g_old, 1, 'Galactic YZ Position of OB2 members \n {0} Myr ago'.format(table_data['age'][0]), 'Y (pc)', 'Z (pc)')
 
 ##Plot position at current time with arrows for velocities
-spatial_plot_with_arrows(y_g, x_g, v_g, u_g, 10, 'Galactic XY Position of Hyades members, with overplotted UV velocities \n Current time', 'Y (pc)', 'X (pc)')
-spatial_plot_with_arrows(x_g, z_g, u_g, w_g, 10, 'Galactic XZ Position of Hyades members, with overplotted UW velocities \n Current time', 'X (pc)', 'Z (pc)')
-spatial_plot_with_arrows(y_g, z_g, v_g, w_g, 10, 'Galactic YZ Position of Hyades members, with overplotted VW velocities \n Current time', 'Y (pc)', 'Z (pc)')
+spatial_plot_with_arrows(y_g, x_g, v_g, u_g, 1, 'Galactic XY Position of Hyades members, with overplotted UV velocities \n Current time', 'Y (pc)', 'X (pc)')
+spatial_plot_with_arrows(x_g, z_g, u_g, w_g, 1, 'Galactic XZ Position of Hyades members, with overplotted UW velocities \n Current time', 'X (pc)', 'Z (pc)')
+spatial_plot_with_arrows(y_g, z_g, v_g, w_g, 1, 'Galactic YZ Position of Hyades members, with overplotted VW velocities \n Current time', 'Y (pc)', 'Z (pc)')
 
 ################# GALACTIC XYZ UVW SPACE (Galactocentric) #####################
-c1 = coord.ICRS(ra =table_data[ra_key], dec = table_data[dec_key], distance = table_data[d_key], pm_ra_cosdec = table_data[pmra_key], pm_dec = table_data[pmdec_key], radial_velocity = table_data[rv_key])
-gc1 = c1.transform_to(coord.Galactocentric)
+#c1 = coord.ICRS(ra =table_data[ra_key], dec = table_data[dec_key], distance = table_data[d_key], pm_ra_cosdec = table_data[pmra_key], pm_dec = table_data[pmdec_key], radial_velocity = table_data[rv_key])
+#gc1 = c1.transform_to(coord.Galactocentric)
 
 #spatial_plot(gc1.x, gc1.y, 1, 'Galactocentric XY Position of confirmed Hyades members \n Current time', 'X (pc)', 'Y (pc)')
 #spatial_plot_with_arrows(gc1.x, gc1.y, gc1.v_x, gc1.v_y, 200, 'Galactocentric XY Position of confirmed Hyades members, with overplotted UV velocities \n Current time', 'Y (pc)', 'X (pc)')

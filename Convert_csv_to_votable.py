@@ -9,10 +9,10 @@ This short script can be used to convert standard csv files to astropy tables
 from astropy.table import Table
 from astropy.io.votable import from_table, writeto
 
-filename = "BANYAN_XI-III_combined_members.csv"
+filename = "Simplified Octans members from BANYAN XI-III and Murphy.csv"
 
 data = Table.read(filename, format='ascii.csv')
 
 votable = from_table(data)
 
-writeto(votable, "BANYAN_XI-III_combined_members_TESS-sectors.xml")
+writeto(votable, "Simplified Octans members from BANYAN XI-III and Murphy.xml")

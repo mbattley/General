@@ -167,6 +167,7 @@ def lightkurve_analysis(filename, target_ID, save_path):
     
     # Load tpf
     tpf = lightkurve.search.open(filename)
+    #tpf = lightkurve.search.search_targetpixelfile(target_ID, sector = 2)
     
     # Attach target name to tpf
     tpf.targetid = target_ID
@@ -253,9 +254,14 @@ def lightkurve_analysis(filename, target_ID, save_path):
 start = time.time()    
 
 #save_path = '/Users/mbattley/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 1/' # laptop
-save_path = '/home/astro/phrhzn/Documents/PhD/Lightkurve/YSO-BANYAN-targets/Sector 1/' # Desktop
+save_path = '/home/astro/phrhzn/Documents/PhD/Promising Star Followup/' # Desktop
 #target_ID = 'HD 207043'
 #filename = 'TESS_Sector_1_cutouts/tess-s0001-2-4_326.981079166667_-52.9310083333333_11x11_astrocut.fits'
+
+# Alternatively: Get tpf from TESS FFI cutouts
+#cutout_coord = SkyCoord(42.984364, -30.814529, unit="deg")
+#manifest = Tesscut.download_cutouts(cutout_coord, [10,15])
+#print(manifest)
 
 with open('Sector_1_targets.pkl', 'rb') as f:
     target_list = pickle.load(f)
@@ -264,10 +270,11 @@ with open('Sector_1_target_filenames.pkl', 'rb') as f:
     target_filenames = pickle.load(f)
 f.close()
 
-target_list = ['J0700-6203']
+target_list = ['CD-60 416']
 
 for target_ID in target_list:
     filenames = target_filenames[target_ID]
+#    filenames = 'hi'
     if len(filenames) == 0:
         print('{} has no associated files'.format(target_ID))
     elif type(filenames) == str:

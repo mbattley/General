@@ -27,7 +27,7 @@ from astropy.io import ascii
 from astropy.table import Table
 from bls import BLS
 
-def phase_fold_plot(t, lc, period, epoch, target_ID, save_path, title):
+def phase_fold_plot(t, lc, period, epoch, target_ID, save_path, title, pipeline, binned = False):
     """
     Phase-folds the lc by the given period, and plots a phase-folded light-curve
     for the object of interest
@@ -39,11 +39,12 @@ def phase_fold_plot(t, lc, period, epoch, target_ID, save_path, title):
     plt.title(title)
     plt.xlabel('Phase')
     plt.ylabel('Normalized Flux')
-    plt.savefig(save_path + '{} - Phase folded by {} days.png'.format(target_ID, period))
+    #plt.savefig(save_path + '{} - {} - Phase folded by {} days.png'.format(pipeline,target_ID, period))
     #plt.show(block = True)
     #plt.close(phase_fold_fig)
-    binned_phase, binned_lc = bin(phase, lc, binsize=30, method='mean')
-    plt.scatter(binned_phase, binned_lc, c='r', s=4)
+    if binned == True:
+        binned_phase, binned_lc = bin(phase, lc, binsize=15, method='mean')
+        plt.scatter(binned_phase, binned_lc, c='r', s=4)
     plt.show(block = False)
     
  
@@ -91,15 +92,17 @@ plt.rcParams['savefig.dpi'] = 180
 
 
 ########################## INPUTS #####################################################
-save_path = '/home/astro/phrhzn/Documents/PhD/TFOP/' # On Desktop
+save_path = '/home/astro/phrhzn/Documents/PhD/Promising Star Followup/' # On Desktop
 #save_path = '/home/u1866052/Lowess detrending/TESS S2/Reanalysed/' # ngtshead
 #save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/Full Injected Transits Test/' # On laptop
-sector = 10
-use_TESSflatten = True # defines whether TESSflatten is used later
+sector = 2
+multi_sector = False   # Either False, or a list of sectors to put together, e.g. [1,2,3]
+use_TESSflatten = False # defines whether TESSflatten is used later
 use_peak_cut = False
 binned = False
-detrending = 'TESSflatten' # Can be 'poly', 'lowess_full', 'lowess_partial', 'TESSflatten', 'wotan' OR 'None'
-single_target_ID = ["TIC 73228647"]
+detrending = 'lowess_partial' # Can be 'poly', 'lowess_full', 'lowess_partial', 'TESSflatten', 'wotan' OR 'None'
+single_target_ID = ["HIP 6485"]
+period_of_interest = 3.526
 ######################################################################################
 
 # Set up table to collect all info on any periodic main stellar variability
@@ -118,9 +121,20 @@ with open('Sector_3_targets_from_TIC_list.pkl', 'rb') as f:
 for target_ID in single_target_ID:
     try:
         try:
-            #lc_30min, filename = diff_image_lc_download(target_ID, sector, plot_lc = True, save_path = save_path)
-            #pipeline = 'Diff_Image'
-            sap_lc, pdcsap_lc = two_min_lc_download("HIP 61820", sector,plt_PDCSAP = True)
+#            if multi_sector != False:
+#                lc_30min, filename1 = diff_image_lc_download(target_ID, multi_sector[0], plot_lc = True, save_path = save_path)
+#                for sector_num in multi_sector[1:]:
+#                    lc_30min_new, filename_new = diff_image_lc_download(target_ID, sector_num, plot_lc = True, save_path = save_path)
+#                    lc_30min = lc_30min.append(lc_30min_new)
+#            else:
+#                lc_30min, filename = diff_image_lc_download(target_ID, sector, plot_lc = True, save_path = save_path)
+#            pipeline = 'Diff_Image'
+            
+#            raw_lc, corr_lc, pca_lc = eleanor_lc_download(target_ID, sector, from_file = True, save_path = save_path, plot_pca = False)
+#            lc_30min = pca_lc
+#            pipeline = 'eleanor'
+            
+            sap_lc, pdcsap_lc = two_min_lc_download('2MASS 01232126-5728507', sector,plt_PDCSAP = True)
             lc_30min = pdcsap_lc
             pipeline = '2min'
             nancut = np.isnan(lc_30min.flux) | np.isnan(lc_30min.time)
@@ -171,11 +185,11 @@ for target_ID in single_target_ID:
         ######################### Find rotation period ################################
         normalized_flux = np.array(lc_30min.flux)/np.median(lc_30min.flux)
         
-        with open(save_path + 'TOI 755 lc.txt', 'w') as f:
-            f.write('Time: Normalized Flux: \n')
-            for i in range(len(normalized_flux)):
-                f.write(str(lc_30min.time[i]) + ' ' + str(normalized_flux[i]) + '\n')               
-        f.close()
+#        with open(save_path + 'TOI 755 lc.txt', 'w') as f:
+#            f.write('Time: Normalized Flux: \n')
+#            for i in range(len(normalized_flux)):
+#                f.write(str(lc_30min.time[i]) + ' ' + str(normalized_flux[i]) + '\n')               
+#        f.close()
         
         # From Lomb-Scargle
         freq = np.arange(0.04,4.1,0.00001)
@@ -186,7 +200,7 @@ for target_ID in single_target_ID:
         plt.ylabel('Power')
         plt.title('{} LombScargle Periodogram for original lc'.format(target_ID))
         #ls_plot.show(block=True)
-        ls_fig.savefig(save_path + '{} - Lomb-Sacrgle Periodogram for original lc.png'.format(target_ID))
+        #ls_fig.savefig(save_path + '{} - Lomb-Sacrgle Periodogram for original lc.png'.format(target_ID))
         plt.close(ls_fig)
         i = np.argmax(power)
         freq_rot = freq[i]
@@ -204,75 +218,78 @@ for target_ID in single_target_ID:
         print("Rotation Period from BLS of original = {}d".format(rot_period))
         
         ########################### batman stuff ######################################
-  #      type_of_planet = 'Hot Jupiter'
-   #     stellar_type = 'F or G'
-        #params = batman.TransitParams()       #object to store transit parameters
-        #print("batman works y'all")
-        #params.t0 = -4.5                      #time of inferior conjunction
-        #params.per = 8.0                      #orbital period (days) - try 0.5, 1, 2, 4, 8 & 10d periods
-        # Change for type of star
-        #params.rp = 0.05                      #planet radius (in units of stellar radii) - Try between 0.01 and 0.1 (F/G) or 0.025 to 0.18 (K/M)
-        # For a: 25 for 10d; 17 for 8d; 10 for 4d; 4-8 (6) for 2 day; 2-5  for 1d; 1-3 (or 8?) for 0.5d
-        #params.a = 17.                         #semi-major axis (in units of stellar radii) - 10-20 probably most realistic for 4 or 8 day; 4-8 for 2 day; 2-5 for 1d; 1-3 for 0.5d
-        #params.inc = 87.                      #orbital inclination (in degrees)
-        #params.ecc = 0.                       #eccentricity
-        #params.w = 90.                        #longitude of periastron (in degrees)
-        #params.limb_dark = "nonlinear"        #limb darkening model
-        #params.u = [0.5, 0.1, 0.1, -0.1]      #limb darkening coefficients [u1, u2, u3, u4]
-        #print("Finished building params")
+        type_of_planet = 'Hot Jupiter'
+        stellar_type = 'F or G'
+        params = batman.TransitParams()       #object to store transit parameters
+        print("batman works y'all")
+        params.t0 = -4.5                      #time of inferior conjunction
+        params.per = period_of_interest                    #orbital period (days) - try 0.5, 1, 2, 4, 8 & 10d periods
+         #Change for type of star
+        params.rp = 0.03                    #planet radius (in units of stellar radii) - Try between 0.01 and 0.1 (F/G) or 0.025 to 0.18 (K/M)
+         #For a: 25 for 10d; 17 for 8d; 10 for 4d; 4-8 (6) for 2 day; 2-5  for 1d; 1-3 (or 8?) for 0.5d
+        params.a = 10.                         #semi-major axis (in units of stellar radii) - 10-20 probably most realistic for 4 or 8 day; 4-8 for 2 day; 2-5 for 1d; 1-3 for 0.5d
+        params.inc = 87.                      #orbital inclination (in degrees)
+        params.ecc = 0.                       #eccentricity
+        params.w = 90.                        #longitude of periastron (in degrees)
+        params.limb_dark = "nonlinear"        #limb darkening model
+        params.u = [0.5, 0.1, 0.1, -0.1]      #limb darkening coefficients [u1, u2, u3, u4]
+        print("Finished building params")
         
-#    #    try:
-#    #        lc_30min, filename = diff_image_lc_download(target_ID, 1, plot_lc = True)
-#    #    except:
-#    #        break
-#        
-     #   # Defines times at which to calculate lc and models batman lc
-        #t = np.linspace(-13.9165035, 13.9165035, len(lc_30min.time))
-        #index = int(len(lc_30min.time)//2)
-        #mid_point = lc_30min.time[index]
-        #t = lc_30min.time - lc_30min.time[index]
-        #m = batman.TransitModel(params, t)
-        #t += lc_30min.time[index]
-        #print("About to compute flux")
-        #batman_flux = m.light_curve(params)
-        #print("Computed flux")
-        #batman_model_fig = plt.figure()
-        #plt.scatter(lc_30min.time, batman_flux, s = 2, c = 'k')
-        #plt.xlabel("Time - 2457000 (BTJD days)")
-        #plt.ylabel("Relative flux")
-        #plt.title("batman model transit for {}R ratio".format(params.rp))
+    #    try:
+    #        lc_30min, filename = diff_image_lc_download(target_ID, 1, plot_lc = True)
+    #    except:
+    #        break
+        
+        # Defines times at which to calculate lc and models batman lc
+        t = np.linspace(-13.9165035, 13.9165035, len(lc_30min.time))
+        index = int(len(lc_30min.time)//2)
+        mid_point = lc_30min.time[index]
+        t = lc_30min.time - lc_30min.time[index]
+        m = batman.TransitModel(params, t)
+        t += lc_30min.time[index]
+        print("About to compute flux")
+        batman_flux = m.light_curve(params)
+        print("Computed flux")
+        batman_model_fig = plt.figure()
+        plt.scatter(lc_30min.time, batman_flux, s = 2, c = 'k')
+        plt.xlabel("Time - 2457000 (BTJD days)")
+        plt.ylabel("Relative flux")
+        plt.title("batman model transit for {}R ratio".format(params.rp))
         #batman_model_fig.savefig(save_path + "batman model transit for {} around {} Star".format(type_of_planet,stellar_type))
         #plt.close(batman_model_fig)
-        #plt.show()
+        plt.show()
         
-        ################################# Combining ###################################
+        ################################ Combining ###################################
         
-        #combined_flux = np.array(lc_30min.flux)/np.median(lc_30min.flux) + batman_flux -1
+        combined_flux = np.array(lc_30min.flux)/np.median(lc_30min.flux) + batman_flux -1
         
-        #injected_transit_fig = plt.figure()
-        #plt.scatter(lc_30min.time, combined_flux, s = 2, c = 'k')
-        #plt.xlabel("Time - 2457000 (BTJD days)")
-        #plt.ylabel("Relative flux")
-    #    plt.title("{} with injected transits for a {} around a {} Star.".format(target_ID, type_of_planet, stellar_type))
-        #plt.title("{} with injected transits for a {}R planet to star ratio.".format(target_ID, params.rp))
-        #ax = plt.gca()
-        #for n in range(int(-1*8/params.per),int(2*8/params.per+2)):
-        #    ax.axvline(params.t0+n*params.per+mid_point, ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-        #ax.axvline(params.t0+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-        #ax.axvline(params.t0+params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-        #ax.axvline(params.t0+2*params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-        #ax.axvline(params.t0-params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
+        injected_transit_fig = plt.figure()
+        plt.scatter(lc_30min.time, combined_flux, s = 2, c = 'k')
+        plt.xlabel("Time - 2457000 (BTJD days)")
+        plt.ylabel("Relative flux")
+        plt.title("{} with injected transits for a {} around a {} Star.".format(target_ID, type_of_planet, stellar_type))
+        plt.title("{} with injected transits for a {}R planet to star ratio.".format(target_ID, params.rp))
+        ax = plt.gca()
+        for n in range(int(-1*8/params.per),int(2*8/params.per+2)):
+            ax.axvline(params.t0+n*params.per+mid_point, ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
+        ax.axvline(params.t0+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
+        ax.axvline(params.t0+params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
+        ax.axvline(params.t0+2*params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
+        ax.axvline(params.t0-params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
         #injected_transit_fig.savefig(save_path + "{} - Injected transits fig - Period 8 - {}R transit.png".format(target_ID, params.rp))
-#        plt.close(injected_transit_fig)
-        #plt.show()
+        #plt.close(injected_transit_fig)
+        plt.show()
     
     ############################## Removing peaks #################################
         
-        combined_flux = np.array(lc_30min.flux)/np.median(lc_30min.flux)
+        #combined_flux = np.array(lc_30min.flux)/np.median(lc_30min.flux)
         if use_peak_cut == True:
-            peaks, peak_info = find_peaks(combined_flux, prominence = 0.001, width = 8)
+#            peaks, peak_info = find_peaks(combined_flux, prominence = 0.001, width = 8)  # For 30min
+            peaks, peak_info = find_peaks(combined_flux, prominence = 0.001, width = 40) # For 2min
+            
             #peaks = np.array([64, 381, 649, 964, 1273])
-            troughs, trough_info = find_peaks(-combined_flux, prominence = -0.001, width = 8)
+#            troughs, trough_info = find_peaks(-combined_flux, prominence = -0.001, width = 8) # For 30min
+            troughs, trough_info = find_peaks(-combined_flux, prominence = -0.001, width = 40) # For 2min
             #troughs = np.array([211, 530, 795, 1113])
             #troughs = np.append(troughs, [370,1031])
             #print(troughs)
@@ -284,7 +301,7 @@ for target_ID in single_target_ID:
             plt.scatter(lc_30min.time, combined_flux, s = 2, c = 'k')
             plt.plot(lc_30min.time[peaks], combined_flux[peaks], "x")
             plt.plot(lc_30min.time[troughs], combined_flux[troughs], "x", c = 'r')
-            peak_location_fig.savefig(save_path + "{} - Peak location fig.png".format(target_ID))
+            #peak_location_fig.savefig(save_path + "{} - {} - Peak location fig.png".format(pipeline, target_ID))
             peak_location_fig.show()
             #plt.close(peak_location_fig)
             
@@ -335,7 +352,7 @@ for target_ID in single_target_ID:
             #ax.axvline(params.t0+params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
             #ax.axvline(params.t0+2*params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
             #ax.axvline(params.t0-params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-            peak_cut_fig.savefig(save_path + "{} - Peak cut fig.png".format(target_ID))
+            #peak_cut_fig.savefig(save_path + "{} - {} - Peak cut fig.png".format(pipeline, target_ID))
             #peak_cut_fig.show()
             plt.close(peak_cut_fig)
         else:
@@ -355,7 +372,7 @@ for target_ID in single_target_ID:
             plt.xlabel('Time - 2457000 [BTJD days]')
             plt.ylabel("Relative flux")
             plt.title('{} lc after standard wotan detrending - before peak removal'.format(target_ID))
-            wotan_original_lc_fig.savefig(save_path + "{} lc residuals after wotan detrending of original lc".format(target_ID))
+            wotan_original_lc_fig.savefig(save_path + "{} - {} lc residuals after wotan detrending of original lc".format(pipeline, target_ID))
             wotan_original_lc_fig.show()
             #plt.close(overplotted_lowess_full_fig)
             
@@ -365,7 +382,7 @@ for target_ID in single_target_ID:
             plt.xlabel('Time - 2457000 [BTJD days]')
             plt.ylabel("Relative flux")
             plt.title('{} lc after standard wotan detrending - after peak removal'.format(target_ID))
-            wotan_peak_removed_fig.savefig(save_path + "{} residuals after peak removal and wotan detrending".format(target_ID))
+            wotan_peak_removed_fig.savefig(save_path + "{} - {} residuals after peak removal and wotan detrending".format(pipeline, target_ID))
             wotan_peak_removed_fig.show()
             #plt.close(overplotted_lowess_full_fig)
             
@@ -376,7 +393,7 @@ for target_ID in single_target_ID:
             plt.xlabel('Time - 2457000 [BTJD days]')
             plt.ylabel("Relative flux")
             plt.title('{} lc with injected transits and overplotted wotan detrending'.format(target_ID))
-            overplotted_wotan_fig.savefig(save_path + "{} lc with overplotted wotan detrending".format(target_ID))
+            overplotted_wotan_fig.savefig(save_path + "{} - {} lc with overplotted wotan detrending".format(pipeline, target_ID))
             overplotted_wotan_fig.show()
             #plt.close(overplotted_lowess_full_fig)
     
@@ -387,7 +404,7 @@ for target_ID in single_target_ID:
         if detrending == 'lowess_full':
             #t_cut = lc_30min.time
             #flux_cut = combined_flux
-            lowess = sm.nonparametric.lowess(flux_cut, t_cut, frac=0.05)
+            lowess = sm.nonparametric.lowess(flux_cut, t_cut, frac=0.03)
             
         #     number of points = 20 at lowest, or otherwise frac = 20/len(t_section) 
             
@@ -397,7 +414,7 @@ for target_ID in single_target_ID:
             plt.title('{} lc with overplotted lowess full lc detrending'.format(target_ID))
             plt.xlabel('Time - 2457000 [BTJD days]')
             plt.ylabel('Relative flux')
-            overplotted_lowess_full_fig.savefig(save_path + "{} lc with overplotted LOWESS full lc detrending.png".format(target_ID))
+            #overplotted_lowess_full_fig.savefig(save_path + "{} - {} lc with overplotted LOWESS full lc detrending.png".format(pipeline, target_ID))
             plt.show()
             #plt.close(overplotted_lowess_full_fig)
             
@@ -413,7 +430,7 @@ for target_ID in single_target_ID:
             #ax.axvline(params.t0+params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
             #ax.axvline(params.t0+2*params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
             #ax.axvline(params.t0-params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-            lowess_full_residuals_fig.savefig(save_path + "{} lc after LOWESS full lc detrending.png".format(target_ID))
+            #lowess_full_residuals_fig.savefig(save_path + "{} - {} lc after LOWESS full lc detrending.png".format(pipeline, target_ID))
             plt.show()
             #plt.close(lowess_full_residuals_fig)
             
@@ -438,7 +455,7 @@ for target_ID in single_target_ID:
                     
                     t_section = t_cut[low_bound:high_bound]
                     flux_section = flux_cut[low_bound:high_bound]
-                    lowess = sm.nonparametric.lowess(flux_section, t_section, frac=30/len(t_section))
+                    lowess = sm.nonparametric.lowess(flux_section, t_section, frac=300/len(t_section)) # n.b. 20-30-50 for 30min, 300-450-750 for 2min
                     lowess_flux_section = lowess[:,1]
                     plt.plot(t_section, lowess_flux_section, '-')
                     
@@ -452,10 +469,10 @@ for target_ID in single_target_ID:
                     
             t_section = t_cut[low_bound:high_bound]
             flux_section = flux_cut[low_bound:high_bound]
-            lowess = sm.nonparametric.lowess(flux_section, t_section, frac=30/len(t_section))
+            lowess = sm.nonparametric.lowess(flux_section, t_section, frac=300/len(t_section)) 
             lowess_flux_section = lowess[:,1]
             plt.plot(t_section, lowess_flux_section, '-')
-            overplotted_detrending_fig.savefig(save_path + "{} - Overplotted lowess detrending - partial lc.png".format(target_ID))
+            #overplotted_detrending_fig.savefig(save_path + "{} - {} - Overplotted lowess detrending - partial lc.png".format(pipeline, target_ID))
             overplotted_detrending_fig.show()
             #plt.close(overplotted_detrending_fig)
             
@@ -474,7 +491,7 @@ for target_ID in single_target_ID:
             #ax.axvline(params.t0+params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
             #ax.axvline(params.t0+2*params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
             #ax.axvline(params.t0-params.per+lc_30min.time[index], ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-            residuals_after_lowess_fig.savefig(save_path + "{} lc after LOWESS partial lc detrending.png".format(target_ID))
+            #residuals_after_lowess_fig.savefig(save_path + "{} - {} lc after LOWESS partial lc detrending.png".format(pipeline, target_ID))
             residuals_after_lowess_fig.show()
             #plt.close(residuals_after_lowess_fig)
     
@@ -489,7 +506,7 @@ for target_ID in single_target_ID:
             # Run Dave's flattening code
             t0 = lc[0,0]
             lc[:,0] -= t0
-            lc[:,1] = TESSflatten(lc,kind='poly', winsize = 3.5, stepsize = 0.15, gapthresh = 0.1, polydeg = 3)
+            lc[:,1] = TESSflatten(lc,kind='poly', winsize = 0.8, stepsize = 0.15, gapthresh = 0.1, polydeg = 3)
             lc[:,0] += t0
             print('TESSflatten used')
             TESSflatten_fig = plt.figure()
@@ -508,8 +525,9 @@ for target_ID in single_target_ID:
 #            if binned == True:
 #                	binned_time, binned_flux = bin(lc[:,0], TESSflatten_flux)
 #                plot(binned_time, binned_flux, c = 'r', label = 'TESSflatten flux')
-#                TESSflatten_fig.savefig(save_path + '{} - TESSflatten lightcurve.png'.format(target_ID))
+#                TESSflatten_fig.savefig(save_path + '{} - {} - TESSflatten lightcurve.png'.format(pipeline, target_ID))
             #plt.close(TESSflatten_fig)
+            #TESSflatten_fig.savefig(save_path + '{} - {} - TESSflatten lightcurve.png'.format(pipeline, target_ID))
             print('TESSflatten Plotted')
             TESSflatten_fig.show()
  
@@ -527,8 +545,8 @@ for target_ID in single_target_ID:
             BLS_flux = flatten_lc_after
         else:
             BLS_flux = combined_flux
-        #model = BoxLeastSquares(t_cut*u.day, BLS_flux)
-        model = BLS(lc_30min.time*u.day,BLS_flux)
+        model = BoxLeastSquares(t_cut*u.day, BLS_flux)
+        #model = BLS(lc_30min.time*u.day,BLS_flux)
         results = model.autopower(durations, minimum_n_transit=3,frequency_factor=5.0)
         
         # Find the period and epoch of the peak
@@ -558,43 +576,46 @@ for target_ID in single_target_ID:
         ax.set_ylabel("log likelihood")
         if use_TESSflatten == True:
             ax.set_title('{} - BLS Periodogram with TESSflatten'.format(target_ID))
-            periodogram_fig.savefig(save_path + '{} - BLS Periodogram with TESSflatten.png'.format(target_ID))
+            #periodogram_fig.savefig(save_path + '{} - {} - BLS Periodogram with TESSflatten.png'.format(pipeline, target_ID))
         else:
             ax.set_title('{} - BLS Periodogram after {} detrending'.format(target_ID, detrending))
-            periodogram_fig.savefig(save_path + '{} - BLS Periodogram after lowess partial detrending.png'.format(target_ID))
+            #periodogram_fig.savefig(save_path + '{} - {} - BLS Periodogram after lowess partial detrending.png'.format(pipeline, target_ID))
         #plt.close(periodogram_fig)
         periodogram_fig.show()  
-        with open(save_path + 'TOI 755.01 BLS info.txt', 'w') as f:
-            f.write('Period(d): Power: Transit-Time(d): Durations(d): \n')
-            for i in range(len(results.period)):
-                f.write(str(results.period[i].value) + ' ' + str(results.power[i]) + ' ' + str(results.transit_time[i].value) + ' ' + str(results.duration[i].value) + '\n')               
-        f.close()
+#        with open(save_path + 'TOI 755.01 BLS info.txt', 'w') as f:
+#            f.write('Period(d): Power: Transit-Time(d): Durations(d): \n')
+#            for i in range(len(results.period)):
+#                f.write(str(results.period[i].value) + ' ' + str(results.power[i]) + ' ' + str(results.transit_time[i].value) + ' ' + str(results.duration[i].value) + '\n')               
+#        f.close()
         #data2save = np.array(['Period', results.period, 'Power', results.power, 'Transit Times', results.transit_time, 'Durations', results.duration])
         #np.savetxt('TOI 755.01 BLS info.txt',data2save, delimeter = ',')
-        with open(save_path + 'TOI 755 lowess flattened lc.txt', 'w') as f:
-            f.write('Time: lowess-flattened_Flux: \n')
-            for i in range(len(BLS_flux)):
-                f.write(str(lc_30min.time[i]) + ' ' + str(BLS_flux[i]) + '\n')               
-        f.close()
+#        with open(save_path + 'TOI 755 lowess flattened lc.txt', 'w') as f:
+#            f.write('Time: lowess-flattened_Flux: \n')
+#            for i in range(len(BLS_flux)):
+#                f.write(str(lc_30min.time[i]) + ' ' + str(BLS_flux[i]) + '\n')               
+#        f.close()
     	  
     
     ##    ################################## Phase folding ##########################
-        #phase_fold_plot(t_cut, BLS_flux, 8, mid_point+params.t0, target_ID, save_path, '{} with injected 8 day transit folded by transit period - {}R ratio'.format(target_ID, params.rp))
-        #phase_fold_plot(lc_30min.time, BLS_flux, rot_period.value, rot_t0.value, target_ID, save_path, '{} folded by rotation period'.format(target_ID))
+        #phase_fold_plot(t_cut, BLS_flux, 8, mid_point+params.t0, target_ID, save_path, '{} with injected 8 day transit folded by transit period - {}R ratio'.format(target_ID, params.rp), pipeline)
+        #phase_fold_plot(lc_30min.time, BLS_flux, rot_period.value, rot_t0.value, target_ID, save_path, '{} folded by rotation period'.format(target_ID), pipeline)
         #print('Max BLS Period = {} days, t0 = {}'.format(period.value, t0.value))        
         #phase_fold_plot(t_cut, BLS_flux, period.value, t0.value, target_ID, save_path, '{} {} residuals folded by Periodogram Max ({:.3f} days)'.format(target_ID, detrending, period.value))
-        #period_to_test = p_rot
-        #t0_to_test = 1339
-        period_to_test2 = 6.96074
-        t0_to_test2 = 1577.728168
-        period_to_test3 = 7.282
-        t0_to_test3 = 1577
-        period_to_test4 = 6.54
-        t0_to_test4 = 1577          
-        #phase_fold_plot(t_cut, BLS_flux, p_rot, 1339, target_ID, save_path, '{} folded by rotation period ({} days)'.format(target_ID,period_to_test))
-        phase_fold_plot(t_cut, BLS_flux, period_to_test2, t0_to_test2, target_ID, save_path, '{} folded by {} days'.format(target_ID,period_to_test2))
-        phase_fold_plot(t_cut, BLS_flux, period_to_test3, t0_to_test3, target_ID, save_path, '{} folded by {} days'.format(target_ID,period_to_test3))
-        phase_fold_plot(t_cut, BLS_flux, period_to_test4, t0_to_test4, target_ID, save_path, '{} folded by {} days'.format(target_ID,period_to_test4))
+        period_to_test = p_rot
+        t0_to_test = 1355
+        period_to_test2 = 11.429
+        t0_to_test2 = 1335
+        period_to_test3 = 9.716
+        t0_to_test3 = 1355
+        period_to_test4 = 11.389
+        t0_to_test4 = 1355  
+        period_to_test5 = 7.149
+        t0_to_test5 = 1355         
+        #phase_fold_plot(t_cut, BLS_flux, p_rot, t0_to_test, target_ID, save_path, '{} after {} folded by rotation period ({} days)'.format(target_ID,detrending,period_to_test), pipeline, binned = True)
+        #phase_fold_plot(t_cut, BLS_flux, period_to_test2, t0_to_test2, target_ID, save_path, '{} after {} folded by {} days'.format(target_ID,detrending,period_to_test2), pipeline, binned = True)
+        #phase_fold_plot(t_cut, BLS_flux, period_to_test3, t0_to_test3, target_ID, save_path, '{} after {} folded by {} days'.format(target_ID,detrending,period_to_test3), pipeline, binned = True)
+        #phase_fold_plot(t_cut, BLS_flux, period_to_test4, t0_to_test4, target_ID, save_path, '{} after {} folded by {} days'.format(target_ID,detrending,period_to_test4), pipeline, binned = True)
+        #phase_fold_plot(t_cut, BLS_flux, period_to_test5, t0_to_test5, target_ID, save_path, '{} after {} folded by {} days'.format(target_ID,detrending,period_to_test5), pipeline, binned = True)
         #print("Absolute amplitude of main variability = {}".format(amplitude_peaks))
         #print('Main Variability Period from Lomb-Scargle = {:.3f}d'.format(p_rot))
         #print("Main Variability Period from BLS of original = {}".format(rot_period))
@@ -617,7 +638,10 @@ for target_ID in single_target_ID:
         
         # Detrended figure setup
         axs[0,1].scatter(t_cut, BLS_flux, c = 'k', s = 1, label = '{} residuals after {} detrending'.format(target_ID,detrending))
-        axs[0,1].set_title('{} residuals after {} detrending - Sector {}'.format(target_ID, detrending, sector))
+        if multi_sector != False:
+            axs[0,1].set_title('{} residuals after {} detrending - Sectors {} to {}'.format(target_ID, detrending, multi_sector[0], multi_sector[-1]))
+        else:
+            axs[0,1].set_title('{} residuals after {} detrending - Sector {}'.format(target_ID, detrending, sector))
         axs[0,1].set_ylabel('Normalized Flux')
         axs[0,1].set_xlabel('Time - 2457000 [BTJD days]')
         #for n in range(int(-1*8/params.per),int(2*8/params.per+2)):
@@ -635,18 +659,24 @@ for target_ID in single_target_ID:
             axs[1,0].axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed")
         
         # Folded or zoomed plot setup
-        epoch = t0.value
-        period = period.value
-        #epoch = 1364.11
-        #period = 12.12
+#        epoch = t0.value
+        #period = period.value
+        epoch = 1362.56
+        period = 5.03
         phase = np.mod(t_cut-epoch-period/2,period)/period 
         axs[1,1].scatter(phase, BLS_flux, c='k', s=1)
         axs[1,1].set_title('{} Lightcurve folded by {:0.4} days'.format(target_ID, period))
         axs[1,1].set_xlabel('Phase')
         axs[1,1].set_ylabel('Normalized Flux')
+        binned_phase, binned_lc = bin(phase, BLS_flux, binsize=30, method='mean')
+        plt.scatter(binned_phase, binned_lc, c='r', s=2)
         
         eye_balling_fig.tight_layout()
-        eye_balling_fig.savefig(save_path + '{} - Full eyeballing fig.png'.format(target_ID))
+        if multi_sector != False:
+            eye_balling_fig.savefig(save_path + '{} - {} with injected 0.03 planet - Full eyeballing fig after 0.8d {} - sectors {} to {}.png'.format(pipeline, target_ID, detrending, multi_sector[0], multi_sector[-1]))
+        else:
+            eye_balling_fig.savefig(save_path + '{} - {} with injected {} planet - Full eyeballing fig after 0.8d {}.png'.format(pipeline, target_ID, params.rp, detrending))
+            #eye_balling_fig.savefig(save_path + '{} - {} - Full eyeballing fig after 0.8d {}.png'.format(pipeline, target_ID, detrending))
         #plt.close(eye_balling_fig)
         plt.show(block = False)
         
