@@ -236,7 +236,7 @@ verts = [
         (-31.,  7.3),
         (-14.5,-1.98),
         (-4.4, -12.2),
-        (-17.5, -34.),
+        (-17.5, -35.),
         (-41., -17.7),
         (-31.,  7.3),
         ]
@@ -440,64 +440,73 @@ w_g_confirmed = w_g_confirmed[~nancut_confirmed]
 # Density plot for VW Galactic Velocity
 VW_density_fig = plt.figure()
 k = kde.gaussian_kde([v_g,w_g])
-nbins = 100
-x5i, y5i = np.mgrid[v_g.min():v_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
+#nbins = 500
+#x5i, y5i = np.mgrid[v_g.min():v_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
+x5i, y5i = np.mgrid[v_g.min():v_g.max(), w_g.min():w_g.max()]
 z5i = k(np.vstack([x5i.flatten(), y5i.flatten()]))
-cs5 = plt.pcolormesh(x5i, y5i, z5i.reshape(x5i.shape), cmap=plt.cm.viridis)
-plt.colorbar()
+cs5 = plt.pcolormesh(x5i, y5i, len(u_g)*z5i.reshape(x5i.shape), cmap=plt.cm.plasma) # Changes colorbar/kde to represent number of sources per (km/s)^2 instead of PDF.
+cbar = plt.colorbar()
+cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
 plt.xlabel('V_g (km/s)')
 plt.ylabel('W_g (km/s)')
 plt.title('Galactic VW plot after 2nd cut')
 plt.scatter(v_g_confirmed,w_g_confirmed, 0.1, 'k')
+#plt.scatter(v_g,w_g, 0.1, 'k')
 
 # Density plot for UV Galactic Velocity
 UV_density_fig = plt.figure()
 k = kde.gaussian_kde([u_g,v_g])
-nbins = 100
-x4i, y4i = np.mgrid[u_g.min():u_g.max():nbins*1j, v_g.min():v_g.max():nbins*1j]
+#nbins = 500
+#x4i, y4i = np.mgrid[u_g.min():u_g.max():nbins*1j, v_g.min():v_g.max():nbins*1j]
+x4i, y4i = np.mgrid[u_g.min():u_g.max(), v_g.min():v_g.max()]
 z4i = k(np.vstack([x4i.flatten(), y4i.flatten()]))
-cs4 = plt.pcolormesh(x4i, y4i, z4i.reshape(x4i.shape), cmap=plt.cm.viridis)
-plt.colorbar()
+cs4 = plt.pcolormesh(x4i, y4i, len(u_g)*z4i.reshape(x4i.shape), cmap=plt.cm.plasma)
+cbar = plt.colorbar()
+cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
 plt.xlabel('U_g')
 plt.ylabel('V_g')
 plt.title('Galactic UV plot after 2nd cut')
 plt.scatter(u_g_confirmed,v_g_confirmed, 0.1, 'k')
+#plt.scatter(u_g,v_g, 0.1, 'k')
 
 # Density plot for UW Galactic position
 UW_density_fig = plt.figure()
 k = kde.gaussian_kde([u_g,w_g])
-nbins = 100
-x6i, y6i = np.mgrid[u_g.min():u_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
+#nbins = 500
+#x6i, y6i = np.mgrid[u_g.min():u_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
+x6i, y6i = np.mgrid[u_g.min():u_g.max(), w_g.min():w_g.max()]
 z6i = k(np.vstack([x6i.flatten(), y6i.flatten()]))
-cs6 = plt.pcolormesh(x6i, y6i, z6i.reshape(x6i.shape), cmap=plt.cm.viridis)
-plt.colorbar()
+cs6 = plt.pcolormesh(x6i, y6i, len(u_g)*z6i.reshape(x6i.shape), cmap=plt.cm.plasma) 
+cbar = plt.colorbar()
+cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
 plt.xlabel('U_g')
 plt.ylabel('W_g')
 plt.title('Galactic UW plot after 2nd cut')
 plt.scatter(u_g_confirmed,w_g_confirmed, 0.1, 'k')
+#plt.scatter(u_g,w_g, 0.1, 'k')
 
 plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot after XYZ cut - Octans')
 
 ##############
 
-u_g_mean = np.mean(u_g_confirmed)
-v_g_mean = np.mean(v_g_confirmed)
-w_g_mean = np.mean(w_g_confirmed)
-
-u_g_std = np.std(u_g_confirmed)
-v_g_std = np.std(v_g_confirmed)
-w_g_std = np.std(w_g_confirmed)
-
-
-good_indices_1 = np.where(np.logical_and(u_g>=u_g_mean - 5*u_g_std, u_g <= u_g_mean + 5*u_g_std))
-good_indices_2 = np.where(np.logical_and(v_g>=v_g_mean - 5*v_g_std, v_g <= v_g_mean + 5*v_g_std))
-good_indices_3 = np.where(np.logical_and(w_g>=w_g_mean - 5*w_g_std, w_g <= w_g_mean + 5*w_g_std))
-
-half_good_indices = np.intersect1d(good_indices_1, good_indices_2)
-full_good_indices = np.intersect1d(half_good_indices, good_indices_3)
-data = data[full_good_indices]
-
-plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot after all cuts - Octans')
+#u_g_mean = np.mean(u_g_confirmed)
+#v_g_mean = np.mean(v_g_confirmed)
+#w_g_mean = np.mean(w_g_confirmed)
+#
+#u_g_std = np.std(u_g_confirmed)
+#v_g_std = np.std(v_g_confirmed)
+#w_g_std = np.std(w_g_confirmed)
+#
+#
+#good_indices_1 = np.where(np.logical_and(u_g>=u_g_mean - 5*u_g_std, u_g <= u_g_mean + 5*u_g_std))
+#good_indices_2 = np.where(np.logical_and(v_g>=v_g_mean - 5*v_g_std, v_g <= v_g_mean + 5*v_g_std))
+#good_indices_3 = np.where(np.logical_and(w_g>=w_g_mean - 5*w_g_std, w_g <= w_g_mean + 5*w_g_std))
+#
+#half_good_indices = np.intersect1d(good_indices_1, good_indices_2)
+#full_good_indices = np.intersect1d(half_good_indices, good_indices_3)
+#data = data[full_good_indices]
+#
+#plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot after all cuts - Octans')
 
 ############################### PLOTS CAMDs ###################################
 # Removes empty data from bp-rp
@@ -505,37 +514,37 @@ plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','d
 #data.remove_rows(masked_indices)
 #
 # Converts Gaia g-band Magnitudes to Absolute G Band Magnitudes
-M_G = data['phot_g_mean_mag'] - 5*(np.log10(data['rest'])-1)
-
-bp_rp = data['bp_rp'] 
-mag_4_CAMD = M_G
-
-nancut = np.isnan(bp_rp)
-bp_rp = bp_rp[~nancut]
-mag_4_CAMD = mag_4_CAMD[~nancut]
-
-# Plots Colour-Absolute Magnitude Diagram
-#plot_with_colourbar(bp_rp,mag_4_CAMD,mag_4_CAMD,'BP-RP','Gaia Absolute G-band Magnitude','Colour-Absolute Magnitude Diagram for stars in the vicinity of the Hyades',invert_y_axis = True, y_lim = (15,-5))
-
-# Plotting CAMD density plot
-fig3 = plt.figure()
-k2 = kde.gaussian_kde([bp_rp, mag_4_CAMD])
-nbins = 500
-x2i, y2i = np.mgrid[bp_rp.min():bp_rp.max():nbins*1j, mag_4_CAMD.min():mag_4_CAMD.max():nbins*1j]
-z2i = k2(np.vstack([x2i.flatten(), y2i.flatten()]))
-plt.gca().invert_yaxis()
-plt.gca().set_ylim(15,-5)
-cmap = plt.cm.viridis
-#cmaplist = [cmap(i) for i in range(cmap.N)]
-#cmaplist[0] = (1.,1.,1.,1.0)
-#cmap = cmap.from_list('Custom_cmap', cmaplist, cmap.N)
-cs2 = plt.pcolormesh(x2i, y2i, z2i.reshape(x2i.shape), cmap = cmap)
-plt.colorbar()
-plt.xlabel('BP-RP')
-plt.ylabel('Gaia Absolute G-band Magnitude')
-plt.title('Colour-Absolute Magnitude Density Plot for stars in the vicinity of Octans')
-
-print('Length of data is now: {}'.format(len(data['ra'])))
+#M_G = data['phot_g_mean_mag'] - 5*(np.log10(data['rest'])-1)
+#
+#bp_rp = data['bp_rp'] 
+#mag_4_CAMD = M_G
+#
+#nancut = np.isnan(bp_rp)
+#bp_rp = bp_rp[~nancut]
+#mag_4_CAMD = mag_4_CAMD[~nancut]
+#
+## Plots Colour-Absolute Magnitude Diagram
+##plot_with_colourbar(bp_rp,mag_4_CAMD,mag_4_CAMD,'BP-RP','Gaia Absolute G-band Magnitude','Colour-Absolute Magnitude Diagram for stars in the vicinity of the Hyades',invert_y_axis = True, y_lim = (15,-5))
+#
+## Plotting CAMD density plot
+#fig3 = plt.figure()
+#k2 = kde.gaussian_kde([bp_rp, mag_4_CAMD])
+#nbins = 500
+#x2i, y2i = np.mgrid[bp_rp.min():bp_rp.max():nbins*1j, mag_4_CAMD.min():mag_4_CAMD.max():nbins*1j]
+#z2i = k2(np.vstack([x2i.flatten(), y2i.flatten()]))
+#plt.gca().invert_yaxis()
+#plt.gca().set_ylim(15,-5)
+#cmap = plt.cm.viridis
+##cmaplist = [cmap(i) for i in range(cmap.N)]
+##cmaplist[0] = (1.,1.,1.,1.0)
+##cmap = cmap.from_list('Custom_cmap', cmaplist, cmap.N)
+#cs2 = plt.pcolormesh(x2i, y2i, z2i.reshape(x2i.shape), cmap = cmap)
+#plt.colorbar()
+#plt.xlabel('BP-RP')
+#plt.ylabel('Gaia Absolute G-band Magnitude')
+#plt.title('Colour-Absolute Magnitude Density Plot for stars in the vicinity of Octans')
+#
+#print('Length of data is now: {}'.format(len(data['ra'])))
 
 ## Defines polygon vertices and path for area of interest
 #verts_CAMD = [
@@ -600,7 +609,7 @@ print('Length of data is now: {}'.format(len(data['ra'])))
 ##
 #with open('Reduced_Octans_Data', 'w+') as f:
 #    f.write(data, format = 'votable')
-data.write('/home/astro/phrhzn/Documents/PhD/Association Members/Octans'+'Reduced_Octans_Data', format='votable')
+#data.write('/home/astro/phrhzn/Documents/PhD/Association Members/Octans/'+'Reduced_Octans_Data', format='votable')
 
 stop = timeit.default_timer()
 print('Time: ',stop - start)
