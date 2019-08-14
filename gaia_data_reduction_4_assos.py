@@ -39,6 +39,7 @@ from matplotlib.path import Path
 import matplotlib.patches as patches
 from scipy.stats import kde
 from math import sin, cos
+from mpl_toolkits.mplot3d import Axes3D
 
 start = timeit.default_timer()
 
@@ -142,6 +143,24 @@ def uvw(ra, dec, d, pmra, pmdec, rv):
     
     return u,v,w
 
+def xyz(data_table):
+    """
+    Calculates galactic XYZ positions given a data table containing at least ra, dec, distance
+    """
+    
+    c_icrs = SkyCoord(ra = data_table['ra'], dec = data_table['dec'])
+    c_galactic = c_icrs.galactic
+    data_table['l'] = c_galactic.l
+    data_table['b'] = c_galactic.b
+    
+    d_key = 'rest'
+    
+    x_g = np.array([data_table[d_key][i] * cos(data_table['b'][i]*np.pi/180) * cos(data_table['l'][i]*np.pi/180) for i,d1 in enumerate(data_table['b'])]) 
+    y_g = np.array([data_table[d_key][i] * cos(data_table['b'][i]*np.pi/180) * sin(data_table['l'][i]*np.pi/180) for i,d1 in enumerate(data_table['b'])]) 
+    z_g = np.array([data_table[d_key][i] * sin(data_table['b'][i]*np.pi/180) for i,d1 in enumerate(data_table['b'])])
+    
+    return x_g, y_g, z_g
+
 ######################## IMPORTS AND SORTS OUT DATA ###########################
 
 # Read data from table
@@ -150,6 +169,7 @@ Table = tab.Table
 #confirmed_data = Table.read('OB2_Gaia_Zeeuw_Match_dist')
 data = Table.read('Octans_area_data_dist.vot')
 confirmed_data = Table.read('Bona-fide Octans members with dist.vot')
+load_path = '/home/astro/phrhzn/Documents/PhD/Association Members/'
 
 # Change from unrecognisable unit names in file
 data['pmra'].unit = 'mas/yr'
@@ -335,8 +355,82 @@ plt.ylabel('z_g')
 plt.title('Galactic YZ plot for potential Octans members')
 plt.scatter(y_g_confirmed,z_g_confirmed, 0.1, 'k')
 
+EPSC_data = Table.read(load_path+'EPSC_Confirmed_BANYAN_crossmatched_with_Gaia.vot')
+x_epsc, y_epsc, z_epsc = xyz(EPSC_data)
+plt.scatter(y_epsc,z_epsc, 0.1, 'r')
+
+LCC_data = Table.read(load_path + 'LCC_Confirmed_BANYAN_crossmatched_with_Gaia.vot')
+x_lcc, y_lcc, z_lcc = xyz(LCC_data)
+plt.scatter(y_lcc,z_lcc, 0.1, 'b')
+
+IC2602_data = Table.read(load_path + 'IC2602_Confirmed_BANYAN_crossmatched_with_Gaia.vot')
+x_ic2602, y_ic2602, z_ic2602 = xyz(IC2602_data)
+plt.scatter(y_ic2602,z_ic2602, 0.1, 'g')
+
+
+
+################################## 3D view ####################################
+
+full_assoc_list = ['118TAU','ABDMG','BPMG_full','CAR','CARN','CBER','COL','CRA','EPSC',
+                   'ETAC','HYA','IC239','IC2602','LCC','OCT','PL8','PLE','ROPH','TAU',
+                   'THA','THOR','TWA','UCL','UCRA','UMA','USCO','XFOR']
+
+assoc_list1 = ['118TAU','ABDMG','BPMG_full','CAR','CARN','CBER','COL','CRA','EPSC','ETAC']
+assoc_list2 = ['HYA','IC239','IC2602','LCC','OCT','PL8','PLE','ROPH','TAU','THA']
+assoc_list3 = ['THOR','TWA','UCL','UCRA','UMA','USCO','XFOR']
+
+threeD_fig = plt.figure()
+ax_3D = threeD_fig.add_subplot(111, projection = '3d')
+
+for assoc in full_assoc_list:
+    data = Table.read(load_path + assoc + '_Confirmed_BANYAN_crossmatched_with_Gaia.vot'.format(assoc))
+    x,y,z = xyz(data)
+    if assoc in assoc_list1:
+        ax_3D.scatter(x, y, z, s = 2, label = assoc)
+    elif assoc in assoc_list2:
+        ax_3D.scatter(x, y, z, s = 8, marker = '>', label = assoc, alpha = 0.5)
+    else:
+        ax_3D.scatter(x, y, z, s = 4, marker = 's', label = assoc, alpha = 0.5)
+
+#ax_3D.legend(bbox_to_anchor=(1.01,0.5), loc="right", bbox_transform=fig.transFigure, ncol=1)
+ax_3D.legend(loc="right")
+ax_3D.set_xlabel('X (pc)')
+ax_3D.set_ylabel('Y (pc)')
+ax_3D.set_zlabel('Z (pc)')
+ax_3D.set_title("3D plot of galactic position for complete BANYAN X I-III sample")
+ax_3D.set_xlim(-300,300)
+ax_3D.set_ylim(-250,100)
+ax_3D.set_zlim(-200,200)
+
+threeD_v_fig = plt.figure()
+ax_3D_v = threeD_v_fig.add_subplot(111, projection = '3d')
+
+for assoc in full_assoc_list:
+    data = Table.read(load_path + assoc + '_Confirmed_BANYAN_crossmatched_with_Gaia.vot'.format(assoc))
+    u, v, w = uvw(ra = data['ra_x'], dec = data['dec_x'], d = data['rest'], pmra = data['pmra_x'], pmdec = data['pmdec_x'], rv = data['radvel'])
+    nancut = np.isnan(u)
+    u = u[~nancut]
+    v = v[~nancut]
+    w = w[~nancut]
+    if assoc in assoc_list1:
+        ax_3D_v.scatter(u, v, w, s = 2, label = assoc)
+    elif assoc in assoc_list2:
+        ax_3D_v.scatter(u, v, w, s = 8, marker = '>', label = assoc, alpha = 0.5)
+    else:
+        ax_3D_v.scatter(u, v, w, s = 4, marker = 's', label = assoc, alpha = 0.5)
+
+#ax_3D.legend(bbox_to_anchor=(1.01,0.5), loc="right", bbox_transform=fig.transFigure, ncol=1)
+ax_3D_v.legend(loc="right")
+ax_3D_v.set_xlabel('U (km/s)')
+ax_3D_v.set_ylabel('V (km/s)')
+ax_3D_v.set_zlabel('W (km/s)')
+ax_3D_v.set_title("3D plot of galactic velocities for complete BANYAN X I-III sample")
+ax_3D_v.set_xlim(-60,20)
+ax_3D_v.set_ylim(-40,20)
+ax_3D_v.set_zlim(-20,20)
+
 ######### POLYGON METHOD OF NARROWING DOWN ####################################
-## Defines polygon vertices and path for area of interest
+# Defines polygon vertices and path for area of interest
 #verts = [
 #        (-137., -24.0),
 #        (-88,-29.4),
@@ -362,31 +456,31 @@ plt.scatter(y_g_confirmed,z_g_confirmed, 0.1, 'k')
 #data.remove_rows(false_indices)
 ################# MEAN + STANDARD DEV. METHOD OF NARROWING DOWN ###############
 
-x_g_mean = np.mean(x_g_confirmed)
-y_g_mean = np.mean(y_g_confirmed)
-z_g_mean = np.mean(z_g_confirmed)
-
-x_g_std = np.std(x_g_confirmed)
-y_g_std = 28.33
-z_g_std = np.std(z_g_confirmed)
-
-
-good_indices_1 = np.where(np.logical_and(x_g>=x_g_mean - 3*x_g_std, x_g <= x_g_mean + 3*x_g_std))
-good_indices_2 = np.where(np.logical_and(y_g>=y_g_mean - 3*y_g_std, y_g <= y_g_mean + 3*y_g_std))
-good_indices_3 = np.where(np.logical_and(z_g>=z_g_mean - 3*z_g_std, z_g <= z_g_mean + 3*z_g_std))
-
-full_good_indices = np.intersect1d(good_indices_2, good_indices_3)
-data = data[full_good_indices]
+#x_g_mean = np.mean(x_g_confirmed)
+#y_g_mean = np.mean(y_g_confirmed)
+#z_g_mean = np.mean(z_g_confirmed)
+#
+#x_g_std = np.std(x_g_confirmed)
+#y_g_std = 28.33
+#z_g_std = np.std(z_g_confirmed)
+#
+#
+#good_indices_1 = np.where(np.logical_and(x_g>=x_g_mean - 3*x_g_std, x_g <= x_g_mean + 3*x_g_std))
+#good_indices_2 = np.where(np.logical_and(y_g>=y_g_mean - 3*y_g_std, y_g <= y_g_mean + 3*y_g_std))
+#good_indices_3 = np.where(np.logical_and(z_g>=z_g_mean - 3*z_g_std, z_g <= z_g_mean + 3*z_g_std))
+#
+#full_good_indices = np.intersect1d(good_indices_2, good_indices_3)
+#data = data[full_good_indices]
 
 ###############################################################################
 
 # Recalculate XYZ positions
-x_g = np.array([data[d_key][i] * cos(data['b'][i]*np.pi/180) * cos(data['l'][i]*np.pi/180) for i,d1 in enumerate(data['b'])]) 
-y_g = np.array([data[d_key][i] * cos(data['b'][i]*np.pi/180) * sin(data['l'][i]*np.pi/180) for i,d1 in enumerate(data['b'])]) 
-z_g = np.array([data[d_key][i] * sin(data['b'][i]*np.pi/180) for i,d1 in enumerate(data['b'])])
-
-# Recalculate UVW velocities
-u_g, v_g, w_g = uvw(ra = data[ra_key], dec = data[dec_key], d = data['rest'], pmra = data[pmra_key], pmdec = data[pmdec_key], rv = data[rv_key])        # Hyades
+#x_g = np.array([data[d_key][i] * cos(data['b'][i]*np.pi/180) * cos(data['l'][i]*np.pi/180) for i,d1 in enumerate(data['b'])]) 
+#y_g = np.array([data[d_key][i] * cos(data['b'][i]*np.pi/180) * sin(data['l'][i]*np.pi/180) for i,d1 in enumerate(data['b'])]) 
+#z_g = np.array([data[d_key][i] * sin(data['b'][i]*np.pi/180) for i,d1 in enumerate(data['b'])])
+#
+## Recalculate UVW velocities
+#u_g, v_g, w_g = uvw(ra = data[ra_key], dec = data[dec_key], d = data['rest'], pmra = data[pmra_key], pmdec = data[pmdec_key], rv = data[rv_key])        # Hyades
 
 ## Density plot for YZ Galactic position
 #YZ_density_fig = plt.figure()
@@ -427,65 +521,67 @@ u_g, v_g, w_g = uvw(ra = data[ra_key], dec = data[dec_key], d = data['rest'], pm
 #plt.title('Galactic XZ plot for potential Octans members')
 #plt.scatter(x_g_confirmed,z_g_confirmed, 0.1, 'k')
 
-nancut = np.isnan(u_g)
-u_g = u_g[~nancut]
-v_g = v_g[~nancut]
-w_g = w_g[~nancut]
+############## --------------------------- ####################################
 
-nancut_confirmed = np.isnan(u_g_confirmed)
-u_g_confirmed = u_g_confirmed[~nancut_confirmed]
-v_g_confirmed = v_g_confirmed[~nancut_confirmed]
-w_g_confirmed = w_g_confirmed[~nancut_confirmed]
-
-# Density plot for VW Galactic Velocity
-VW_density_fig = plt.figure()
-k = kde.gaussian_kde([v_g,w_g])
-#nbins = 500
-#x5i, y5i = np.mgrid[v_g.min():v_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
-x5i, y5i = np.mgrid[v_g.min():v_g.max(), w_g.min():w_g.max()]
-z5i = k(np.vstack([x5i.flatten(), y5i.flatten()]))
-cs5 = plt.pcolormesh(x5i, y5i, len(u_g)*z5i.reshape(x5i.shape), cmap=plt.cm.plasma) # Changes colorbar/kde to represent number of sources per (km/s)^2 instead of PDF.
-cbar = plt.colorbar()
-cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
-plt.xlabel('V_g (km/s)')
-plt.ylabel('W_g (km/s)')
-plt.title('Galactic VW plot after 2nd cut')
-plt.scatter(v_g_confirmed,w_g_confirmed, 0.1, 'k')
-#plt.scatter(v_g,w_g, 0.1, 'k')
-
-# Density plot for UV Galactic Velocity
-UV_density_fig = plt.figure()
-k = kde.gaussian_kde([u_g,v_g])
-#nbins = 500
-#x4i, y4i = np.mgrid[u_g.min():u_g.max():nbins*1j, v_g.min():v_g.max():nbins*1j]
-x4i, y4i = np.mgrid[u_g.min():u_g.max(), v_g.min():v_g.max()]
-z4i = k(np.vstack([x4i.flatten(), y4i.flatten()]))
-cs4 = plt.pcolormesh(x4i, y4i, len(u_g)*z4i.reshape(x4i.shape), cmap=plt.cm.plasma)
-cbar = plt.colorbar()
-cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
-plt.xlabel('U_g')
-plt.ylabel('V_g')
-plt.title('Galactic UV plot after 2nd cut')
-plt.scatter(u_g_confirmed,v_g_confirmed, 0.1, 'k')
-#plt.scatter(u_g,v_g, 0.1, 'k')
-
-# Density plot for UW Galactic position
-UW_density_fig = plt.figure()
-k = kde.gaussian_kde([u_g,w_g])
-#nbins = 500
-#x6i, y6i = np.mgrid[u_g.min():u_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
-x6i, y6i = np.mgrid[u_g.min():u_g.max(), w_g.min():w_g.max()]
-z6i = k(np.vstack([x6i.flatten(), y6i.flatten()]))
-cs6 = plt.pcolormesh(x6i, y6i, len(u_g)*z6i.reshape(x6i.shape), cmap=plt.cm.plasma) 
-cbar = plt.colorbar()
-cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
-plt.xlabel('U_g')
-plt.ylabel('W_g')
-plt.title('Galactic UW plot after 2nd cut')
-plt.scatter(u_g_confirmed,w_g_confirmed, 0.1, 'k')
-#plt.scatter(u_g,w_g, 0.1, 'k')
-
-plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot after XYZ cut - Octans')
+#nancut = np.isnan(u_g)
+#u_g = u_g[~nancut]
+#v_g = v_g[~nancut]
+#w_g = w_g[~nancut]
+#
+#nancut_confirmed = np.isnan(u_g_confirmed)
+#u_g_confirmed = u_g_confirmed[~nancut_confirmed]
+#v_g_confirmed = v_g_confirmed[~nancut_confirmed]
+#w_g_confirmed = w_g_confirmed[~nancut_confirmed]
+#
+## Density plot for VW Galactic Velocity
+#VW_density_fig = plt.figure()
+#k = kde.gaussian_kde([v_g,w_g])
+##nbins = 500
+##x5i, y5i = np.mgrid[v_g.min():v_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
+#x5i, y5i = np.mgrid[v_g.min():v_g.max(), w_g.min():w_g.max()]
+#z5i = k(np.vstack([x5i.flatten(), y5i.flatten()]))
+#cs5 = plt.pcolormesh(x5i, y5i, len(u_g)*z5i.reshape(x5i.shape), cmap=plt.cm.plasma) # Changes colorbar/kde to represent number of sources per (km/s)^2 instead of PDF.
+#cbar = plt.colorbar()
+#cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
+#plt.xlabel('V_g (km/s)')
+#plt.ylabel('W_g (km/s)')
+#plt.title('Galactic VW plot after 2nd cut')
+#plt.scatter(v_g_confirmed,w_g_confirmed, 0.1, 'k')
+##plt.scatter(v_g,w_g, 0.1, 'k')
+#
+## Density plot for UV Galactic Velocity
+#UV_density_fig = plt.figure()
+#k = kde.gaussian_kde([u_g,v_g])
+##nbins = 500
+##x4i, y4i = np.mgrid[u_g.min():u_g.max():nbins*1j, v_g.min():v_g.max():nbins*1j]
+#x4i, y4i = np.mgrid[u_g.min():u_g.max(), v_g.min():v_g.max()]
+#z4i = k(np.vstack([x4i.flatten(), y4i.flatten()]))
+#cs4 = plt.pcolormesh(x4i, y4i, len(u_g)*z4i.reshape(x4i.shape), cmap=plt.cm.plasma)
+#cbar = plt.colorbar()
+#cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
+#plt.xlabel('U_g')
+#plt.ylabel('V_g')
+#plt.title('Galactic UV plot after 2nd cut')
+#plt.scatter(u_g_confirmed,v_g_confirmed, 0.1, 'k')
+##plt.scatter(u_g,v_g, 0.1, 'k')
+#
+## Density plot for UW Galactic position
+#UW_density_fig = plt.figure()
+#k = kde.gaussian_kde([u_g,w_g])
+##nbins = 500
+##x6i, y6i = np.mgrid[u_g.min():u_g.max():nbins*1j, w_g.min():w_g.max():nbins*1j]
+#x6i, y6i = np.mgrid[u_g.min():u_g.max(), w_g.min():w_g.max()]
+#z6i = k(np.vstack([x6i.flatten(), y6i.flatten()]))
+#cs6 = plt.pcolormesh(x6i, y6i, len(u_g)*z6i.reshape(x6i.shape), cmap=plt.cm.plasma) 
+#cbar = plt.colorbar()
+#cbar.set_label('Number of sources per (km/s)^2', rotation = 90)
+#plt.xlabel('U_g')
+#plt.ylabel('W_g')
+#plt.title('Galactic UW plot after 2nd cut')
+#plt.scatter(u_g_confirmed,w_g_confirmed, 0.1, 'k')
+##plt.scatter(u_g,w_g, 0.1, 'k')
+#
+#plot_with_colourbar(data['ra'],data['dec'],data['phot_g_mean_mag'],'ra (deg)','dec (deg)','Location plot after XYZ cut - Octans')
 
 ##############
 
