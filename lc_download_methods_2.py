@@ -29,6 +29,8 @@ def find_tic(target_ID, from_file = True):
     if from_file == True:
         try:
             table_data = Table.read("Original_BANYAN_XI-III_xmatch_TIC.csv" , format='ascii.csv')
+            #table_data = Table.read("Original VCA Members.csv" , format='ascii.csv') 
+            #table_data = Table.read("Original Argus members info.csv" , format='ascii.csv')
             
             # Obtains ra and dec for object from target_ID
             i = list(table_data['main_id']).index(target_ID)
@@ -68,34 +70,24 @@ def find_tic(target_ID, from_file = True):
     return ra, dec, tic
     
 
-def two_min_lc_download(target_ID, sector, multi_sector = False, plt_SAP = False, plt_PDCSAP = False):
+def two_min_lc_download(target_ID, sector, plt_SAP = False, plt_PDCSAP = False):
     """
     Downloads and returns SAP and PDCSAP 2-min lightcurves from MAST
     """
-    if multi_sector != False:
-        lcf = search_lightcurvefile(target_ID, sector = multi_sector[0]).download()
-        sap_lc = lcf.SAP_FLUX
-        pdcsap_lc = lcf.PDCSAP_FLUX
-        for sector in multi_sector[1:]:
-            lcf_sector = search_lightcurvefile(target_ID, sector = sector).download()
-            sector_sap_lc = lcf_sector.SAP_FLUX
-            sap_lc = sap_lc.append(sector_sap_lc)
-            sector_pdcsap_lc = lcf_sector.PDCSAP_FLUX
-            pdcsap_lc = pdcsap_lc.append(sector_pdcsap_lc)
-    else:
-        try:
-            lcf = search_lightcurvefile(target_ID, sector = sector).download()
-        except:
-            table_data = Table.read('BANYAN_XI-III_combined_members.csv')
-            i = list(table_data['main_id']).index(target_ID)
-            ra = table_data['ra'][i]
-            dec = table_data['dec'][i]
-            object_coord = SkyCoord(ra, dec, unit="deg")
-            lcf = search_lightcurvefile(object_coord, sector = sector).download()
-        sap_lc = lcf.SAP_FLUX
-        pdcsap_lc = lcf.PDCSAP_FLUX
+    try:
+        dec, tic = find_tic(target_ID, from_file = True)
+        lcf = search_lightcurvefile(tic, sector = sector).download()
+    except:
+        table_data = Table.read('BANYAN_XI-III_combined_members.csv')
+        i = list(table_data['main_id']).index(target_ID)
+        ra = table_data['ra'][i]
+        dec = table_data['dec'][i]
+        object_coord = SkyCoord(ra, dec, unit="deg")
+        lcf = search_lightcurvefile(object_coord, sector = sector).download()
     
-    # Plot light-curves
+    # Seperate lightcurves
+    sap_lc = lcf.SAP_FLUX
+    pdcsap_lc = lcf.PDCSAP_FLUX
     if plt_SAP == True:
         pdcsap_lc.scatter()
         plt.title('{} - 2min SAP lc'.format(target_ID))
@@ -175,12 +167,12 @@ def raw_FFI_lc_download(target_ID, sector, plot_tpf = False, plot_lc = False, sa
     
     return lc_30min
 
-def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, save_path = '/home/u1866052/Lowess detrending/TESS S1/'):
+def diff_image_lc_download(target_ID, sector, plot_lc = False, from_file = True, save_path = '/home/u1866052/Lowess detrending/TESS S5/'):
     """
     Downloads and returns 30min cadence lightcurves based on Oelkers & Stassun
     difference imaging analysis method of lightcurve extraction
     """
-    DIAdir = '/ngts/scratch/tess/FFI-LC/S1/clean/'
+    DIAdir = '/ngts/scratch/tess/FFI-LC/S{}/lc/clean/'.format(sector)
     
     ra, dec, tic = find_tic(target_ID, from_file = from_file) 
     
@@ -204,8 +196,8 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
 
     
     try:
-        lines = loadtxt(filename, delimiter = ' ') # For when in local directory
-#        lines = loadtxt(DIAdir+filename, delimiter = ' ') # For when on ngtshead
+        #lines = loadtxt(filename, delimiter = ' ') # For when in local directory
+        lines = loadtxt(DIAdir+filename, delimiter = ' ') # For when on ngtshead
         DIA_lc = list(map(list, zip(*lines)))
         DIA_mag = np.array(DIA_lc[1])
         
