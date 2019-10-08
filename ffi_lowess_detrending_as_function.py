@@ -740,7 +740,7 @@ binned = False
 transit_mask = False
 injected_planet = 'user_defined'      # Can be 'exo_archive', 'set_period', 'set_depth', 'user_defined' or False
 detrending = 'lowess_partial' # Can be 'poly', 'lowess_full', 'lowess_partial', 'TESSflatten', 'wotan' OR 'None'
-single_target_ID = ['2MASS J23261069-7323498']
+single_target_ID = ['2MASS J23261069-7323498','HIP 1113']
 ######################################################################################
 
 # Set up table to collect all info on any periodic main stellar variability
@@ -764,7 +764,7 @@ all_target_IDs = ["2MASS J02235464-5815067","AK Pic AB","CD-60 416","CD-61 6893"
 rp_list = [0.1, 0.075, 0.05, 0.04, 0.03]
 
 for rp in rp_list:
-    t_cut_f, BLS_flux_f, phase_f, epoch_f, period_f = ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/Injected Transits/2MASS J23261069-7323498/', sector = 1, target_ID_list = single_target_ID, pipeline = '2min', multi_sector = False, use_TESSflatten = False, use_peak_cut = False, binned = False, transit_mask = False, injected_planet = 'user_defined', injected_rp = rp, injected_per = 8.0, detrending = 'lowess_partial', single_target_ID = ['HIP 1113'])
+    t_cut_f, BLS_flux_f, phase_f, epoch_f, period_f = ffi_lowess_detrend(save_path = save_path, sector = 1, target_ID_list = single_target_ID, pipeline = '2min', multi_sector = False, use_TESSflatten = False, use_peak_cut = False, binned = False, transit_mask = False, injected_planet = 'user_defined', injected_rp = rp, injected_per = 8.0, detrending = 'lowess_partial', single_target_ID = ['HIP 1113'])
 
 #ascii.write(variability_table, save_path + 'Variability_info_eleanor.csv', format='csv', overwrite = True)
 ascii.write(sensitivity_table, save_path + 'Sensitivity_analysis.csv', format='csv', overwrite = True) 
