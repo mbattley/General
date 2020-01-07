@@ -144,7 +144,7 @@ def clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path):
     elif sector == 3:
         mom_dumps = s3_bad_times
         for i in range(len(time)):
-            if lc_30min.time[i] < 1385.8966:
+            if time[i] < 1385.8966:
                 for_removal[i] = True
             elif time[i] > 1406.2925:
                 for_removal[i] = True
@@ -170,20 +170,20 @@ def clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path):
     clean_flux = flux[~for_removal]
     clean_flux_err = flux_err[~for_removal]
     
-    plt.figure()
-    plt.scatter(clean_time, clean_flux, s=1, c='k')
-    plt.title('{} after removing poor TESS pointing epochs'.format(target_ID))
+    #plt.figure()
+    #plt.scatter(clean_time, clean_flux, s=1, c='k')
+    #plt.title('{} after removing poor TESS pointing epochs'.format(target_ID))
     
     return clean_time, clean_flux, clean_flux_err
 
-target_ID = 'HIP 1993'
-sector = 1
-save_path = '/Users/mbattley/Documents/PhD/TESS Systematics Removal/'
+#target_ID = 'HIP 1993'
+#sector = 1
+#save_path = '/Users/mbattley/Documents/PhD/TESS Systematics Removal/'
 
-lc_30min, filename = diff_image_lc_download(target_ID, sector, plot_lc = True, save_path = save_path, from_file = True)
-time = lc_30min.time
-flux = lc_30min.flux
-flux_err = lc_30min.flux_err
+#lc_30min, filename = diff_image_lc_download(target_ID, sector, plot_lc = True, save_path = save_path, from_file = True)
+#time = lc_30min.time
+#flux = lc_30min.flux
+#flux_err = lc_30min.flux_err
 
-clean_time, clean_flux, clean_flux_err = clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path)
+#clean_time, clean_flux, clean_flux_err = clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path)
 
