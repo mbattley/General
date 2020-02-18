@@ -23,32 +23,37 @@ def get_lc_from_fits(filename, source='QLP', save_path = ''):
 #    print(hdul[1].header)
     
     if source == 'QLP':
-        tic = filename[25:34]
+        target_ID = hdul[0].header['OBJECT']
+        sector = hdul[0].header['SECTOR']
         
         time = data['TIME']
         sap_flux = data['SAP_FLUX']
-        kspsap_flux = data['KSPSAP_FLUX']
+#        kspsap_flux = data['KSPSAP_FLUX']
         quality = data['QUALITY']
         quality = quality.astype(bool)
         
         clean_time = time[~quality]
         clean_flux = sap_flux[~quality]
-        clean_kspsap_flux = kspsap_flux[~quality]
+#        clean_kspsap_flux = kspsap_flux[~quality]
         
-        plt.figure()
+        original_lc_fig = plt.figure()
         plt.scatter(clean_time, clean_flux,s=1,c='k')
-        plt.title('SAP lc for TIC {}'.format(tic))
-        plt.show()
+        plt.title('SAP lc for {}'.format(target_ID))
+        plt.xlabel('Time - 2457000 [BTJD Days]')
+        plt.ylabel('Relative Flux')
+        original_lc_fig.savefig(save_path + "{} - original CDIPS lc.pdf".format(target_ID))
+#        plt.show()
+        plt.close(original_lc_fig)
         
-        plt.figure()
-        plt.scatter(clean_time, clean_kspsap_flux,s=1,c='k')
-        plt.title('KSPSAP lc for TIC {}'.format(tic))
-        plt.show()
+#        plt.figure()
+#        plt.scatter(clean_time, clean_kspsap_flux,s=1,c='k')
+#        plt.title('KSPSAP lc for {}'.format(target_ID))
+#        plt.show()
         
         hdul.close()
         
-        lc = lightkurve.LightCurve(time = clean_time, flux = clean_flux, flux_err = quality[~quality], targetid = tic)
-        return lc
+        lc = lightkurve.LightCurve(time = clean_time, flux = clean_flux, flux_err = quality[~quality], targetid = target_ID)
+        return lc, target_ID, sector
     elif source == 'CDIPS':
 #        print('Using CDIPS')
         tic = hdul[0].header['TICID']
