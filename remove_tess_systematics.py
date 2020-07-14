@@ -32,6 +32,19 @@ from astropy.io import ascii
 from astropy.table import Table
 from scipy import interpolate
 
+######################## Set font sizes ####################
+SMALL_SIZE = 8
+MEDIUM_SIZE = 12
+BIGGER_SIZE = 16
+
+plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
 def bin(time, flux, binsize=15, method='mean'):
     """Bins a lightcurve in blocks of size `binsize`.
     n.b. based on the one from eleanor
@@ -83,7 +96,8 @@ def view_quaternions(sector = 1, camera = 1, quaternion = 1):
                      'tess2019136122405_sector10-quat.fits','tess2019140185400_sector11-quat.fits','tess2019170120618_sector12-quat.fits',
                      'tess2019207131829_sector13-quat.fits','tess2019227202023_sector14-quat.fits','tess2019255102657_sector15-quat.fits',
                      'tess2019280102352_sector16-quat.fits','tess2019307010433_sector17-quat.fits','tess2019331203517_sector18-quat.fits',
-                     'tess2019357232015_sector19-quat.fits']
+                     'tess2019357232015_sector19-quat.fits','tess2020021235438_sector20-quat.fits','tess2020052075303_sector21-quat.fits',
+                     'tess2020081142848_sector22-quat.fits','tess2020107160812_sector23-quat.fits']
     
     input_filename = filename_list[sector]
     
@@ -92,50 +106,97 @@ def view_quaternions(sector = 1, camera = 1, quaternion = 1):
         #print(hdul['CAMERA1'].header)
         cam1_data = hdul['CAMERA{}'.format(camera)].data
         time = cam1_data.field('Time')
-        cx_Qx = cam1_data.field('C{}_Q{}'.format(camera,quaternion))
+        c1_Q1 = cam1_data.field('C1_Q1')
+        c1_Q2 = cam1_data.field('C1_Q2')
+        c1_Q3 = cam1_data.field('C1_Q3')
+#        cx_Qx = cam1_data.field('C{}_Q{}'.format(camera,quaternion))
     
     # Plot each individually
-    plot_quaternions(time, cx_Qx, sector, camera, quaternion)
+#    plot_quaternions(time, c1_Q1, sector, camera = 1, q = 1)
+#    plot_quaternions(time, c1_Q2, sector, camera = 1, q = 2)
+#    plot_quaternions(time, c1_Q3, sector, camera = 1, q = 3)
 #    plot_quaternions_2min(time, cx_Qx, sector, camera, quaternion)
 #    plot_quaternions_30min(time, cx_Qx, sector, camera, quaternion)
+
+    
+    # Generate mask based on those above 3sd
+    sd_c1_Q1 = np.std(c1_Q1)
+    q_mask1 = np.abs(c1_Q1) < 5*sd_c1_Q1
+    sd_c1_Q2 = np.std(c1_Q2)
+    q_mask2 = np.abs(c1_Q2) < 5*sd_c1_Q2
+    sd_c1_Q3 = np.std(c1_Q3)
+    q_mask3 = np.abs(c1_Q3) < 5*sd_c1_Q3
+    
+    
+    q_mask_overall = (q_mask1 == 1) & (q_mask2 == 1) & (q_mask3 == 1) 
+    
+    new_time = time[q_mask_overall]
+    new_q = c1_Q1[q_mask_overall]
+    
+#    plt.figure()
+#    plt.scatter(new_time, new_q, s=1, c='k')
+    
+    bad_times = time[~q_mask_overall]
+    rounded_bad_times = np.round(bad_times, decimals = 2)
+    unique_bad_times = np.unique(rounded_bad_times)
+    with open('s{}_bad_times.pkl'.format(sector), 'wb') as f:
+        pickle.dump(unique_bad_times, f, pickle.HIGHEST_PROTOCOL)
+    
     
     ###########################################################################
-#    # Plotting raw and 30min in one:
-#    fig, axs = plt.subplots(2, 1, sharex=True)
+#    binned_time, binned_q = bin(time,c1_Q1, binsize=900)
+#    # Optional removal of bad times for plotting below
+#    mom_dumps = unique_bad_times
+#    for_removal = [False]*len(binned_time)
+#    if sector == 1:
+#        for i in range(len(binned_time)):
+#            if binned_time[i] > 1348 and binned_time[i] < 1349.29:
+#                for_removal[i] = True
+#        for i in mom_dumps:
+#            for j in range(len(binned_time)):
+#                if abs(binned_time[j] - i) < 0.015:
+#                    for_removal[j] = True
+#    elif sector == 3:
+#        for i in range(len(binned_time)):
+#            if binned_time[i] < 1385.8966:
+#                for_removal[i] = True
+#            elif binned_time[i] > 1406.2925:
+#                for_removal[i] = True
+#            elif binned_time[i] > 1395.4800 and binned_time[i] < 1396.6050:
+#                for_removal[i] = True
+#        for i in mom_dumps:
+#            for j in range(len(binned_time)):
+#                if abs(binned_time[j] - i) < 0.015:
+#                    for_removal[j] = True
+#    for_removal = np.array(for_removal)
+#    
+#    clean_time = binned_time[~for_removal]
+#    clean_q = binned_q[~for_removal]
+#    
+#    # Plotting raw and 30min before/after in one:
+#    fig, axs = plt.subplots(3, 1, sharex=True)
 #    fig.subplots_adjust(hspace=0)
 #    
-#    line1 = axs[0].scatter(time, cx_Qx, s=1, c='k')
+#    line1 = axs[0].scatter(time, c1_Q1, s=1, c='k')
 #    #axs[0].set_ylabel('Raw Q1 Quaternions')
 #    axs[0].set_ylim(-0.0006,0.0006)
 #    axs[0].legend([line1],['Raw'], loc='upper right')
 #    
-#    binned_time, binned_q = bin(time,cx_Qx, binsize=900)
 #    line2 = axs[1].scatter(binned_time, binned_q, s=1, c='g')
 #    #axs[1].set_ylabel('30min Q1 Quaternions')
 #    axs[1].set_ylim(-0.00005,0.00005)
 #    axs[1].legend([line2],['30min'], loc='upper right')
+#
+#    line2 = axs[2].scatter(clean_time, clean_q, s=1, c='r')
+#    #axs[1].set_ylabel('30min Q1 Quaternions')
+#    axs[2].set_ylim(-0.00005,0.00005)
+#    axs[2].legend([line2],['30min after quaternion cleaning'], loc='upper right')
 #    
-#    axs[1].set_xlabel('Time - 2457000 [BTJD days]')
+#    axs[2].set_xlabel('Time - 2457000 [BTJD days]')
 #    fig.text(0.01, 0.5, 'Q1 Quaternions (arcsec)', va='center', rotation='vertical')
 #    
 #    plt.show()
     ###########################################################################
-    
-    # Generate mask based on those above 5sd
-    sd_cx_Qx = np.std(cx_Qx)
-    q_mask = np.abs(cx_Qx) < 5*sd_cx_Qx
-    
-    new_time = time[q_mask]
-    new_q = cx_Qx[q_mask]
-    
-    plt.figure()
-    plt.scatter(new_time, new_q, s=1, c='k')
-    
-    bad_times = time[~q_mask]
-    rounded_bad_times = np.round(bad_times, decimals = 2)
-    unique_bad_times = np.unique(rounded_bad_times)
-    #with open('s{}_bad_times.pkl'.format(sector), 'wb') as f:
-    #    pickle.dump(unique_bad_times, f, pickle.HIGHEST_PROTOCOL)
     
     return unique_bad_times
 
@@ -187,14 +248,22 @@ def clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path):
         s18_bad_times = pickle.load(f)
     with open('s19_bad_times.pkl', 'rb') as f:
         s19_bad_times = pickle.load(f)
+    with open('s20_bad_times.pkl', 'rb') as f:
+        s20_bad_times = pickle.load(f)
+    with open('s21_bad_times.pkl', 'rb') as f:
+        s21_bad_times = pickle.load(f)
+    with open('s22_bad_times.pkl', 'rb') as f:
+        s22_bad_times = pickle.load(f)
+    with open('s23_bad_times.pkl', 'rb') as f:
+        s23_bad_times = pickle.load(f)
     
     for_removal = [False]*len(time)
     
     if sector == 1:
         mom_dumps = s1_bad_times
-#        for i in range(len(time)):
-#            if time[i] > 1348 and time[i] < 1349.29:
-#                for_removal[i] = True
+        for i in range(len(time)):
+            if time[i] > 1348 and time[i] < 1349.29:
+                for_removal[i] = True
     elif sector == 2:
         mom_dumps = s2_bad_times
     elif sector == 3:
@@ -215,16 +284,41 @@ def clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path):
         mom_dumps = s5_bad_times
     elif sector == 6:
         mom_dumps = s6_bad_times
+        for i in range(len(time)):
+            if time[i] < 1468.26998:
+                for_removal[i] = True
     elif sector == 7:
         mom_dumps = s7_bad_times
     elif sector == 8:
         mom_dumps = s8_bad_times
+        for i in range(len(time)):
+            if time[i] < 1517.3415:
+                for_removal[i] = True
+            elif time[i] > 1530 and time[i] < 1530.44705:
+                for_removal[i] = True
+            elif time[i] > 1531.74288 and time[i] < 1535.00264:
+                for_removal[i] = True
     elif sector == 9:
         mom_dumps = s9_bad_times
+        for i in range(len(time)):
+            if time[i] < 1543.75080:
+                for_removal[i] = True
+            elif time[i] > 1556.7 and time[i] < 1557.0008:
+                for_removal[i] = True
     elif sector == 10:
         mom_dumps = s10_bad_times
+        for i in range(len(time)):
+            if time[i] < 1570.8762:
+                for_removal[i] = True
+            elif time[i] > 1582.75 and time[i] < 1584.72342:
+                for_removal[i] = True
     elif sector == 11:
         mom_dumps = s11_bad_times
+        for i in range(len(time)):
+            if time[i] < 1599.94148:
+                for_removal[i] = True
+            elif time[i] > 1610.77620 and time[i] < 1614.19842:
+                for_removal[i] = True
     elif sector == 12:
         mom_dumps = s12_bad_times
     elif sector == 13:
@@ -245,12 +339,20 @@ def clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path):
     elif sector == 18:
         mom_dumps = s18_bad_times
         for i in range(len(time)):
-            if time[i] < 1791.5:
+            if time[i] < 1791.36989:
                 for_removal[i] = True
-            if time[i] > 1813.48:
+            if time[i] > 1815.03026:
                 for_removal[i] = True
     elif sector == 19:
         mom_dumps = s19_bad_times
+    elif sector == 20:
+        mom_dumps = s20_bad_times
+    elif sector == 21:
+        mom_dumps = s21_bad_times
+    elif sector == 22:
+        mom_dumps = s22_bad_times
+    elif sector == 23:
+        mom_dumps = s23_bad_times
     
     # Removing momentum dumps:
     for i in mom_dumps:
