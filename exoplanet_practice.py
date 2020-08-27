@@ -20,6 +20,7 @@ import theano.tensor as tt
 import astropy.units as u
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy.ma as ma
 from astropy.table import Table
 from lc_download_methods import two_min_lc_download
 from remove_tess_systematics import clean_tess_lc
@@ -51,8 +52,8 @@ def binned(time, flux, binsize=15, method='mean'):
 
 ############################## PART 0: Setup ##################################
 # lc parameters
-save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/Kepler-2min xmatch/'
-target_ID = 'TIC 169175503' # Kepler 25 test-case: 'TIC 120960812' #TIC number
+save_path = '/Users/mbattley/Documents/PhD/Kepler-2min xmatch/'
+target_ID = 'TIC 27769688' # Kepler 25 test-case: 'TIC 120960812' #TIC number
 TIC = int(target_ID[4:])
 sector = 14
 multi_sector = False
@@ -140,15 +141,28 @@ else:
     planet_params = Table(names=('periodi','periodi_sd','t0i','t0i_sd','radi'))
     for j in range(len(planet_data['TICID'])):
         if planet_data['TICID'][j] == TIC and planet_data['pl_discmethod'][j] == 'Transit':
-            periodi = planet_data['pl_orbper'][j]
-            period_sd = planet_data['pl_orbpererr1'][j]
-            t0i = planet_data['pl_tranmid'][j]
+            if ma.is_masked(planet_data['Per'][j]) == False:
+                periodi = planet_data['Per'][j]
+                period_sd = planet_data['e_Per'][j]
+                t0i = planet_data['T0'][j]
+            else:
+                periodi = planet_data['pl_orbper'][j]
+                period_sd = planet_data['pl_orbpererr1'][j]
+                t0i = planet_data['pl_tranmid'][j]
             t0i_sd = 0.1
 #            if planet_num == 1:
 #                t0i_sd = 0.05
-            radi = planet_data['pl_radj'][j]*const.R_jup.value/const.R_sun.value
+            if ma.is_masked(planet_data['Rp'][j]) == False:
+                radi = planet_data['Rp'][j]*const.R_earth.value/const.R_sun.value
+            else:
+                radi = planet_data['pl_radj'][j]*const.R_jup.value/const.R_sun.value
+            #n.b. if getting it from revised info convert from Earth radii to jupiter radii
             M_star = planet_data['st_mass'][j],planet_data['st_masserr1'][j]
-            R_star = planet_data['st_rad'][j], planet_data['st_raderr1'][j]
+            # Gets updated R_star based on DR2 (Berger+16) if available, otherwise falls back to exo archive
+            if ma.is_masked(planet_data['R*'][j]) == False:
+                R_star = planet_data['R*'][j], planet_data['E_R*_2'][j]
+            else:
+                R_star = planet_data['st_rad'][j], planet_data['st_raderr1'][j]
             planet_params.add_row((periodi, period_sd, t0i, t0i_sd, radi))
             planet_num += 1
     periods = np.array(planet_params['periodi'])
@@ -535,10 +549,10 @@ def build_model(mask=None, start=None, optimisation=True):
 		
 		############################################################    
 		
-        ### GP model for the TESS light curve
+        ### GP model for the light curve
 		# Essentially from the tutorial
 	
-        kernel = xo.gp.terms.SHOTerm(log_Sw4=logSw4, log_w0=logw0, Q=1 / np.sqrt(2))
+        kernel = xo.gp.terms.SHOTerm(log_Sw4=logSw4, log_w0=logw0, Q=1 / np.sqrt(2)) # n.b. SHOTerm = Stochastically driven, damped Harmonic Osciallator. Other recommended options are Matern32Term (Matern-3/2 function) and RotationTerm (two SHO for stellar rotation)
         gp = xo.gp.GP(kernel, time_TESS[mask], tt.exp(logs2) + tt.zeros(mask.sum()))
 #        print(flux_TESS[mask])
 #        print(light_curve_TESS)
@@ -600,16 +614,37 @@ def build_model(mask=None, start=None, optimisation=True):
 #		vrad_b_plot = xo.eval_in_model(orbit_b.get_radial_velocity(finegrid,K=np.exp(map_soln['logK_b'])),map_soln)
 #		vrad_c_plot = xo.eval_in_model(orbit_c.get_radial_velocity(finegrid,K=np.exp(map_soln['logK_c'])),map_soln)
 #		vrad_d_plot = xo.eval_in_model(orbit_d.get_radial_velocity(finegrid,K=np.exp(map_soln['logK_d'])),map_soln)
+        trace = []
+#        trace = pm.sample(
+#                tune=1000,
+#                draws=1000,
+#                start=map_soln,
+#                cores=2,
+#                chains=2,
+#                step=xo.get_dense_nuts_step(target_accept=0.9),
+#        )
+#        print(pm.stats.summary(trace, var_names=["P_b","t0_b", "r_pl_b"]))
 
-    return model, map_soln, #vrad_b_plot, vrad_c_plot, vrad_d_plot, gp_H  # with RVs, you need to return some extra stuff for plotting
+#        samples = pm.trace_to_dataframe(trace, varnames=["P_b","t0_b", "r_pl_b"])
+##        model.test_point = [periods[0],t0is[0],0.02]
+#        truth = np.concatenate(
+#            xo.eval_in_model([P_b, t0_b, r_pl_b], model=model)
+#        )
+#        _ = corner.corner(
+#            samples,
+#            truths=truth,
+#            labels=["P_b","t0_b", "r_pl_b"],
+#        )
+    return trace, model, map_soln, #vrad_b_plot, vrad_c_plot, vrad_d_plot, gp_H  # with RVs, you need to return some extra stuff for plotting
 
-model0, map_soln0 = build_model() # this allows you to reuse the model or something later on - for GPs, add in: vrad_b_plot, vrad_c_plot, vrad_d_plot, gp_H
+trace, model0, map_soln0 = build_model() # this allows you to reuse the model or something later on - for GPs, add in: vrad_b_plot, vrad_c_plot, vrad_d_plot, gp_H
 
 print(map_soln0) # this is how you find out the values your parameters have fit to! it prints a huge long thing in your terminal lmao
 
 with open(save_path+'Fit_solutions/{}_fit_soln.csv'.format(target_ID),'w') as f:
     w = csv.writer(f)
     w.writerows(map_soln0.items())
+
 
 ############################# PART 4: Plotting ################################
 
@@ -886,6 +921,7 @@ def plot_light_curve_auto(soln, mask=None,instrument = 'both', planet_num=1):
         ax.scatter(phases_b_TESS, flux_TESS[len(time_Kepler):]-gp_mod[len(time_Kepler):], c='k', s=1, label="TESS De-trended Data")
         ax.scatter(phases_b_Kepler, flux_TESS[0:len(time_Kepler):]-gp_mod[0:len(time_Kepler):], c='darkgrey', s=1, label="Kepler De-trended Data")
         mod_b = soln["light_curves_b"]
+#        ax.plot(phases_b[mask][arg_b], mod_b[arg_b]+0.005, color='orange', label="Planet b Model")
         ax.plot(phases_b[mask][arg_b], mod_b[arg_b], color='orange', label="Planet b Model")
         ax.legend(fontsize=12)
         ax.set_ylabel("De-trended Flux [ppt]")
@@ -1039,45 +1075,169 @@ def plot_light_curve_auto(soln, mask=None,instrument = 'both', planet_num=1):
             )
         
     else:
-        fig, axes = plt.subplots(2, 1, figsize=(8, 10), sharex=False)
-    	
+        if mask is None:
+        		mask = np.ones(len(time_TESS), dtype=bool)
+        if planet_num == 1:
+            fig = plt.figure()
+        else:
+            fig, axes = plt.subplots(planet_num, 1, figsize=(8, 10), sharex=False)
+        
+        plt.title('{}'.format(target_ID))
+
         # setting up the phase fold data
         phases_b = np.mod(time_TESS - soln['t0_b']-soln['P_b']/2, soln['P_b'])/soln['P_b']
         arg_b = np.argsort(phases_b)
+        gp_mod = soln["gp_pred"] + soln["mean"]
     	
         # phase fold for planet b
-        ax = axes[0]
+        if planet_num == 1:
+            ax = plt.gca()
+        else:
+            ax = axes[0]
         ax.scatter(phases_b[mask], flux_TESS[mask]-gp_mod, c='k', s=1, label="{} De-trended Data".format(instrument))
+        binned_time_b, binned_flux_b = binned(phases_b[mask][arg_b], flux_TESS[mask][arg_b]-gp_mod[arg_b])
+        ax.scatter(binned_time_b, binned_flux_b, c='r', s=1, label="Binned {} De-trended Data".format(instrument))
         mod_b = soln["light_curves_b"]
         ax.plot(phases_b[mask][arg_b], mod_b[arg_b], color='orange', label="Planet b Model")
         ax.legend(fontsize=12)
         ax.set_ylabel("De-trended Flux [ppt]")
         ax.set_xlabel("Phase")
         ax.set_xlim(0, 1)
-        
+        txt = "Planet b Period = {:.3f}".format(map_soln0['P_b'])
+        ax.annotate(
+                txt,
+                (0, 0),
+                xycoords="axes fraction",
+                xytext=(5, 5),
+                textcoords="offset points",
+                ha="left",
+                va="bottom",
+                fontsize=12,
+        )
         if planet_num > 1:
             # phase fold for planet c
             phases_c = np.mod(time_TESS - soln['t0_c']-soln['P_c']/2, soln['P_c'])/soln['P_c']
             arg_c = np.argsort(phases_c)
             ax = axes[1]
             ax.scatter(phases_c[mask], flux_TESS[mask]-gp_mod, c='k', s=1, label="{} De-trended Data".format(instrument))
+            binned_time_c, binned_flux_c = binned(phases_c[mask][arg_c], flux_TESS[mask][arg_c]-gp_mod[arg_c])
+            ax.scatter(binned_time_c, binned_flux_c, c='r', s=1, label="Binned {} De-trended Data".format(instrument))
             mod_c = soln["light_curves_c"]
             ax.plot(phases_c[mask][arg_c], mod_c[arg_c], color='blue', label="Planet c Model")
             ax.legend(fontsize=12)
             ax.set_ylabel("De-trended Flux [ppt]")
             ax.set_xlim(0, 1)
-        
+            txt = "Planet c Period = {:.3f}".format(map_soln0['P_c'])
+            ax.annotate(
+                    txt,
+                    (0, 0),
+                    xycoords="axes fraction",
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                    ha="left",
+                    va="bottom",
+                    fontsize=12,
+            )
+            
         if planet_num > 2:
             # phase fold for planet d
             phases_d = np.mod(time_TESS - soln['t0_d']-soln['P_d']/2, soln['P_d'])/soln['P_d']
             arg_d = np.argsort(phases_d)
             ax = axes[2]
             ax.scatter(phases_d[mask], flux_TESS[mask]-gp_mod, c='k', s=1, label="{} De-trended Data".format(instrument))
+            binned_time_d, binned_flux_d = binned(phases_d[mask][arg_d], flux_TESS[mask][arg_d]-gp_mod[arg_d])
+            ax.scatter(binned_time_d, binned_flux_d, c='r', s=1, label="Binned {} De-trended Data".format(instrument))
             mod_d = soln["light_curves_d"]
             ax.plot(phases_d[mask][arg_d], mod_d[arg_d], color='blue', label="Planet d Model")
             ax.legend(fontsize=12)
             ax.set_ylabel("De-trended Flux [ppt]")
             ax.set_xlim(0, 1)
+            txt = "Planet d Period = {:.3f}".format(map_soln0['P_d'])
+            ax.annotate(
+                    txt,
+                    (0, 0),
+                    xycoords="axes fraction",
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                    ha="left",
+                    va="bottom",
+                    fontsize=12,
+            )
+            
+        if planet_num > 3:
+            # phase fold for planet e
+            phases_e = np.mod(time_TESS - soln['t0_e']-soln['P_e']/2, soln['P_e'])/soln['P_e']
+            arg_e = np.argsort(phases_e)
+            ax = axes[3]
+            ax.scatter(phases_e[mask], flux_TESS[mask]-gp_mod, c='k', s=1, label="{} De-trended Data".format(instrument))
+            binned_time_e, binned_flux_e = binned(phases_e[mask][arg_e], flux_TESS[mask][arg_e]-gp_mod[arg_e])
+            ax.scatter(binned_time_e, binned_flux_e, c='r', s=1, label="Binned {} De-trended Data".format(instrument))
+            mod_e = soln["light_curves_e"]
+            ax.plot(phases_e[mask][arg_e], mod_e[arg_e], color='blue', label="Planet e Model")
+            ax.legend(fontsize=12)
+            ax.set_ylabel("De-trended Flux [ppt]")
+            ax.set_xlim(0, 1)
+            txt = "Planet e Period = {:.3f}".format(map_soln0['P_e'])
+            ax.annotate(
+                    txt,
+                    (0, 0),
+                    xycoords="axes fraction",
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                    ha="left",
+                    va="bottom",
+                    fontsize=12,
+            )
+            
+        if planet_num > 4:
+            # phase fold for planet f
+            phases_f = np.mod(time_TESS - soln['t0_f']-soln['P_f']/2, soln['P_f'])/soln['P_f']
+            arg_f = np.argsort(phases_f)
+            ax = axes[4]
+            ax.scatter(phases_f[mask], flux_TESS[mask]-gp_mod, c='k', s=1, label="{} De-trended Data".format(instrument))
+            binned_time_f, binned_flux_f = binned(phases_f[mask][arg_f], flux_TESS[mask][arg_f]-gp_mod[arg_f])
+            ax.scatter(binned_time_f, binned_flux_f, c='r', s=1, label="Binned {} De-trended Data".format(instrument))
+            mod_f = soln["light_curves_f"]
+            ax.plot(phases_f[mask][arg_f], mod_f[arg_f], color='blue', label="Planet f Model")
+            ax.legend(fontsize=12)
+            ax.set_ylabel("De-trended Flux [ppt]")
+            ax.set_xlim(0, 1)
+            txt = "Planet f Period = {:.3f}".format(map_soln0['P_f'])
+            ax.annotate(
+                    txt,
+                    (0, 0),
+                    xycoords="axes fraction",
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                    ha="left",
+                    va="bottom",
+                    fontsize=12,
+            )
+            
+        if planet_num > 5:
+            # phase fold for planet f
+            phases_g = np.mod(time_TESS - soln['t0_g']-soln['P_g']/2, soln['P_g'])/soln['P_g']
+            arg_g = np.argsort(phases_g)
+            ax = axes[5]
+            ax.scatter(phases_g[mask], flux_TESS[mask]-gp_mod, c='k', s=1, label="{} De-trended Data".format(instrument))
+            binned_time_g, binned_flux_g = binned(phases_g[mask][arg_g], flux_TESS[mask][arg_g]-gp_mod[arg_g])
+            ax.scatter(binned_time_g, binned_flux_g, c='r', s=1, label="Binned {} De-trended Data".format(instrument))
+            mod_g = soln["light_curves_g"]
+            ax.plot(phases_g[mask][arg_g], mod_f[arg_g], color='blue', label="Planet g Model")
+            ax.legend(fontsize=12)
+            ax.set_ylabel("De-trended Flux [ppt]")
+            ax.set_xlim(0, 1)
+            txt = "Planet g Period = {:.3f}".format(map_soln0['P_g'])
+            ax.annotate(
+                    txt,
+                    (0, 0),
+                    xycoords="axes fraction",
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                    ha="left",
+                    va="bottom",
+                    fontsize=12,
+            )
 	
     return fig
 

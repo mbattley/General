@@ -14,6 +14,7 @@ import random
 import scipy.fftpack
 import os
 import random
+import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
@@ -108,7 +109,11 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
                     elif pipeline == 'raw':
                         lc_30min = raw_FFI_lc_download(target_ID, sector, plot_tpf = False, plot_lc = True, save_path = save_path, from_file = False)
                     elif pipeline == 'CDIPS':
+                        filename = 'hlsp_cdips_tess_ffi_gaiatwo0003127142396615051264-0006-cam1-ccd2_tess_v01_llc.fits'
                         lc_30min, target_ID, sector = get_lc_from_fits(filename, source = pipeline)
+                        nancut = np.isnan(lc_30min.flux) | np.isnan(lc_30min.time)
+                        lc_30min = lc_30min[~nancut]
+                        print('Removed nans')
                         print(target_ID)
                     elif pipeline == 'QLP':
                         lc_30min, kspsap_flux = get_lc_from_fits(filename, source = pipeline)
@@ -147,7 +152,7 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
             plt.xlabel('Frequency')
             plt.ylabel('Power')
             plt.title('{} LombScargle Periodogram for original lc'.format(target_ID))
-            ls_fig.show(block=True)
+            ls_fig.show()
     #        ls_fig.savefig(save_path + '{} - Lomb-Sacrgle Periodogram for original lc.png'.format(target_ID))
             plt.close(ls_fig)
             i = np.argmax(power)
@@ -269,6 +274,7 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
                 plt.close(injected_transit_fig)
 #                plt.show()
             if injected_planet == False:
+                print(lc_30min.flux)
                 combined_flux = np.array(lc_30min.flux)/np.median(lc_30min.flux)
         ############################## Removing peaks #################################
             
@@ -363,6 +369,8 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
                  t_cut = lc_30min.time
                  flux_cut = combined_flux
                  flux_err_cut = lc_30min.flux_err
+                 #print(t_cut)
+                 #print(flux_cut)
                  print('Flux cut skipped')
                  
         ############################## Apply transit mask #########################
@@ -370,9 +378,9 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
             if transit_mask == True:
 #                period = 8.466
 #                epoch = 1330.41 
-                period = 8.138
-                epoch = 1332.30997
-                duration = 0.15
+                period = 0.7
+                epoch = 1485.03
+                duration = 0.05
                 phase = np.mod(t_cut-epoch-period/2,period)/period
                 
                 near_transit = [False]*len(flux_cut)
@@ -463,7 +471,7 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
                     lowess = sm.nonparametric.lowess(flux_cut, t_cut, frac=0.02)
                 
             #     number of points = 20 at lowest, or otherwise frac = 20/len(t_section) 
-                
+                print(lowess)
                 overplotted_lowess_full_fig = plt.figure()
                 plt.scatter(t_cut,flux_cut, c = 'k', s = 2)
                 plt.plot(lowess[:, 0], lowess[:, 1])
@@ -679,7 +687,13 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
 #                periodogram_fig.savefig(save_path + '{} - BLS Periodogram after lowess partial detrending - {}R {}d injected planet.png'.format(target_ID, params.rp, params.per))
                 periodogram_fig.savefig(save_path + '{} - BLS Periodogram after lowess partial detrending.png'.format(target_ID))
 #            plt.close(periodogram_fig)
-            periodogram_fig.show()   
+            periodogram_fig.show()
+            
+            periodogram_data = [results.period.value,results.power]
+            
+            with open(save_path+"{}_periodogram_data.csv".format(target_ID),"w+") as my_csv:
+                csvWriter = csv.writer(my_csv,delimiter=',')
+                csvWriter.writerows(periodogram_data)
         	  
         
         ##    ################################## Phase folding ##########################
@@ -737,12 +751,12 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
             t0_to_test2 = t0_2.value
             period_to_test3 = period_3.value
             t0_to_test3 = t0_3.value
-#            period_to_test4 = 8.466
-#            t0_to_test4 = 1330.41      
+            period_to_test4 = 5.47
+            t0_to_test4 = 1489.41     
             phase_fold_plot(t_cut, BLS_flux, p_rot, t0_to_test, target_ID, save_path, '{} folded by rotation period ({} days)'.format(target_ID,period_to_test))
             phase_fold_plot(t_cut, BLS_flux, period_to_test2, t0_to_test2, target_ID, save_path, '{} detrended lc folded by 2nd largest peak ({:0.4} days)'.format(target_ID,period_to_test2))
             phase_fold_plot(t_cut, BLS_flux, period_to_test3, t0_to_test3, target_ID, save_path, '{} detrended lc folded by 3rd largest peak ({:0.4} days)'.format(target_ID,period_to_test3))
-#            phase_fold_plot(t_cut, BLS_flux, period_to_test4, t0_to_test4, target_ID, save_path, 'AU Mic detrended lc folded by {:0.4} days'.format(period_to_test4))
+            phase_fold_plot(t_cut, BLS_flux, period_to_test4, t0_to_test4, target_ID, save_path, '{} detrended lc folded by {:0.4} days'.format(target_ID,period_to_test4))
             #print("Absolute amplitude of main variability = {}".format(amplitude_peaks))
             #print('Main Variability Period from Lomb-Scargle = {:.3f}d'.format(p_rot))
             #print("Main Variability Period from BLS of original = {}".format(rot_period))
@@ -787,9 +801,9 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
             # Folded or zoomed plot setup
             epoch = t0.value
 #            epoch = 1452.43
-#            period = period.value
+            period = period.value
             #epoch = t0_3.value 
-            period = 6.96
+#            period = 6.96
 #            print('Main epoch is {}'.format(t0.value+lc_30min.time[0]))
             phase = np.mod(t_cut-epoch-period/2,period)/period 
             axs[1,1].scatter(phase, BLS_flux, c='k', s=1)
@@ -845,10 +859,13 @@ def ffi_lowess_detrend(save_path = '/Users/mbattley/Documents/PhD/New detrending
             
             plt.show()
             
-            ################## Saving detrended lc to file  ###################
+            ################## Saving detrended and lowess lcs to file  ###################
             
-            detrended_lc = lightkurve.lightcurve.TessLightCurve(time = t_cut,flux=BLS_flux,flux_err =lc_30min.flux_err)
-            detrended_lc.to_csv('{}_detrended_lc.csv'.format(target_ID))
+            detrended_lc = lightkurve.lightcurve.TessLightCurve(time=t_cut, flux=BLS_flux, flux_err =lc_30min.flux_err)
+            detrended_lc.to_csv(save_path + '{}_detrended_lc.csv'.format(target_ID))
+            
+            lowess_fit_lc = lightkurve.lightcurve.TessLightCurve(time=time_from_lowess_detrend,flux=full_lowess_flux)
+            lowess_fit_lc.to_csv(save_path + '{}_lowess_fit_lc.csv'.format(target_ID))
             
             ###################################################################
             
@@ -929,18 +946,18 @@ au = 149597871 #km
 ########################## INPUTS #####################################################
 #save_path = '/home/astro/phrhzn/Documents/PhD/Lowess detrending/TESS S1/WOH S 216/' # On Desktop
 #save_path = '/home/u1866052/Lowess detrending/Injected Transits/TESS S1/Redo after quaternions/Changing Period/' # ngtshead
-save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/HIP 116748 AB/' # On laptop
-sector = 1
-pipeline = 'DIA'
+save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/Periodogram_Test/' # On laptop
+sector = 6
+pipeline = 'CDIPS'
 multi_sector = False #[14,15,16,17,18]
 use_TESSflatten = False # defines whether TESSflatten is used later
 use_peak_cut = False
 binned = False
-transit_mask = True
+transit_mask = False
 injected_planet = False  # Can be 'exo_archive', 'set_period', 'set_depth', 'user_defined' or False
-detrending = 'lowess_partial' # Can be 'poly', 'lowess_full', 'lowess_partial', 'TESSflatten', 'wotan' OR 'None'
-n_bins = 20
-single_target_ID = ['HIP 116748 A']
+detrending = 'lowess_full' # Can be 'poly', 'lowess_full', 'lowess_partial', 'TESSflatten', 'wotan' OR 'None'
+n_bins = 30
+single_target_ID = ['TIC 281319998']
 target_list = ['2MASS J01231125-6921379','2MASS J23261069-7323498','J0449-5741','J0635-5737','J0501-7856','J0156-7457','J0548-5211','J0638-5604','J0715-6555','J0120-6241','J0025-6237','J2146-2515','J0519-7104']
 ######################################################################################
 
