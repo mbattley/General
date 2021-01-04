@@ -365,6 +365,21 @@ def get_lc_from_fits(filename, source='QLP'):
         hdul.close()
         lc = lightkurve.LightCurve(time = time, flux = mag, flux_err = mag_err, targetid = tic)
         return lc, sector
+    elif source == 'K2SFF':
+        # Fill in K2SFF method
+        k2sff_data = hdul['BESTAPER'].data
+        k2sff_time = k2sff_data['T'] + 2454833 #Convert to BJD for consistency
+        k2sff_flux = k2sff_data['FCOR']
+        
+        plt.figure()
+        plt.scatter(k2sff_time,k2sff_flux,s=2,c='r', label = 'K2-SFF 30min')
+        plt.legend()
+        plt.xlabel('Time [BJD]')
+        plt.ylabel("Normalized Flux")
+        plt.show()
+        hdul.close()
+        lc = lightkurve.LightCurve(time = k2sff_time, flux = k2sff_flux)
+        return lc
     else:
         print('Please enter a valid source')
         return 

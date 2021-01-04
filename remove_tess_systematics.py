@@ -27,7 +27,7 @@ from lc_download_methods import *
 from statsmodels.nonparametric.kernel_regression import KernelReg
 from scipy.signal import find_peaks
 from astropy.timeseries import BoxLeastSquares
-from wotan import flatten
+#from wotan import flatten
 from astropy.io import ascii
 from astropy.table import Table
 from scipy import interpolate

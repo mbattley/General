@@ -32,31 +32,33 @@ start = time.time()
 
 plt.rcParams['figure.dpi'] = 300
 ################################### INPUTS ####################################
-save_path = '/Users/mbattley/Documents/PhD/New detrending methods/Smoothing/lowess/Kepler-2min xmatch/'
-target_ID = 272369124 #'272369124' #TIC 272369124/Kepler-34 b
+save_path = '/Users/mbattley/Documents/PhD/Kepler-2min xmatch/'
+target_ID = 27769688 #'272369124' #TIC 272369124/Kepler-34 b
 sector = 14
 multi_sector = False
-source = 'pc'
+source = 'planet'
 planet_params = 'user_defined' # n.b. can be 'user_defined' or 'from_file'
 colours = ['r', 'b', 'g', 'c', 'm', 'y']
 planets = ['b', 'c', 'd', 'e', 'f', 'g']
 ###############################################################################
 
-with open(save_path+'Candidate epochs/Failed_lcs.csv','w') as f:
-    info_row = ['TIC', 'Sector']
-    writer = csv.writer(f, delimiter=',')
-    writer.writerow(info_row)
+#with open(save_path+'Planet epochs/Failed_lcs.csv','w') as f:
+#    info_row = ['TIC', 'Sector']
+#    writer = csv.writer(f, delimiter=',')
+#    writer.writerow(info_row)
 
-#planet_data = Table.read(save_path + 'Kepler_planets_reobserved_in_TESS_2min.csv', format='ascii.csv')
-pc_data = Table.read(save_path + 'Kepler_pcs_reobserved_in_TESS_2min_final.csv', format='ascii.csv')
+planet_data = Table.read(save_path + 'Kepler_planets_reobserved_in_TESS_2min.csv', format='ascii.csv')
+#pc_data = Table.read(save_path + 'Kepler_pcs_reobserved_in_TESS_2min_final.csv', format='ascii.csv')
 
 num_lcs = 0
-target_ID_list = np.array(pc_data['TICID'])
+#target_ID_list = np.array(pc_data['TICID'])
+target_ID_list = np.array([27769688])
 for target_ID in target_ID_list:
     try:
         multi_sector = False
-        i = list(pc_data['TICID']).index(int(target_ID))
         
+        i = list(planet_data['TICID']).index(int(target_ID))
+        print('Got here')
         if source == 'planet':
             per = planet_data['pl_orbper'][i]
             t0_TESS = planet_data['pl_tranmid'][i]   - 2457000
@@ -67,9 +69,10 @@ for target_ID in target_ID_list:
             t0_Kepler = pc_data['koi_time0bk'][i] 
         #target_ID = planet_data['TICID'][71]
         
-        if (pc_data['S14'][i] != 0) and (pc_data['S15'][i] != 0):
+        if (planet_data['S14'][i] != 0) and (planet_data['S15'][i] != 0):
             multi_sector = [14,15]
-        
+        elif (planet_data['S14'][i] != 0) and (planet_data['S26'][i] != 0):
+            multi_sector = [14,26]
         
         ##################################### TESS lc #################################
         # Obtain TESS lc
@@ -114,6 +117,7 @@ for target_ID in target_ID_list:
         planet = 0
         if source == 'planet':
             for j in range(len(planet_data['TICID'])):
+                print(planet_data['TICID'][j])
                 if planet_data['TICID'][j] == target_ID:
                     per = planet_data['pl_orbper'][j]
                     t0_TESS = planet_data['pl_tranmid'][j] - 2457000
@@ -127,6 +131,7 @@ for target_ID in target_ID_list:
                             ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c=colours[planet])
                             line_time += per
                     planet += 1
+                    print(per, t0_TESS)
         if source == 'pc':
             for j in range(len(pc_data['TICID'])):
                 if pc_data['TICID'][j] == target_ID:
@@ -143,57 +148,58 @@ for target_ID in target_ID_list:
                             line_time += per
                     planet += 1
         
-        tess_fig.figure.savefig(save_path + "Candidate epochs/" + "TIC {} - TESS candidate epochs.png".format(target_ID))
-        plt.close(tess_fig.figure)
+#        tess_fig.figure.savefig(save_path + "Planet epochs/" + "TIC {} - TESS candidate epochs.png".format(target_ID))
+#        plt.close(tess_fig.figure)
         
         ############################### KEPLER lc #####################################
         
-        # Obtain all Kepler lcs
-        lcfs = lightkurve.search_lightcurvefile(pc_data['kepid'][i], mission='Kepler').download_all()
-        stitched_lc = lcfs.PDCSAP_FLUX.stitch()
-        #stitched_lc.scatter()
-        stitched_lc = lcfs.PDCSAP_FLUX.stitch(corrector_func=my_custom_corrector_func)
-        kepler_fig = stitched_lc.scatter()
-        #kepler_fig = plt.figure()
-        #plt.scatter(stitched_lc.time,stitched_lc.flux,c='k', s=2)
-        #plt.xlabel('Time - 2454833 [BKJD days]')
-        #plt.ylabel("Normalized Flux")
-         
-        # Add lines to Kepler plot
-        ax = plt.gca()
-        line_time = t0_Kepler
-        #while line_time < stitched_lc.time[-1]:
-        #    ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
-        #    line_time += per
-        planet = 0
-        if source == 'planet':
-            for j in range(len(planet_data['TICID'])):
-                if planet_data['TICID'][j] == target_ID:
-                    per = planet_data['pl_orbper'][j]
-                    t0_Kepler = planet_data['pl_tranmid'][j] - 2454833
-                    line_time = t0_Kepler
-                    while line_time < stitched_lc.time[-1]:
-                        ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c=colours[planet])
-                        line_time += per
-                    planet += 1
-        elif source == 'pc':
-            for j in range(len(pc_data['TICID'])):
-                if pc_data['TICID'][j] == target_ID:
-                    per = pc_data['koi_period'][j]
-                    t0_Kepler = pc_data['koi_time0bk'][j]
-                    line_time = t0_Kepler
-                    while line_time < stitched_lc.time[-1]:
-                        ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c=colours[planet])
-                        line_time += per
-                    planet += 1
+#        # Obtain all Kepler lcs
+#        lcfs = lightkurve.search_lightcurvefile(planet_data['kepid'][i], mission='Kepler').download_all()
+#        stitched_lc = lcfs.PDCSAP_FLUX.stitch()
+#        #stitched_lc.scatter()
+#        stitched_lc = lcfs.PDCSAP_FLUX.stitch(corrector_func=my_custom_corrector_func)
+#        kepler_fig = stitched_lc.scatter()
+#        #kepler_fig = plt.figure()
+#        #plt.scatter(stitched_lc.time,stitched_lc.flux,c='k', s=2)
+#        #plt.xlabel('Time - 2454833 [BKJD days]')
+#        #plt.ylabel("Normalized Flux")
+#         
+#        # Add lines to Kepler plot
+#        ax = plt.gca()
+#        line_time = t0_Kepler
+#        #while line_time < stitched_lc.time[-1]:
+#        #    ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c = 'r')
+#        #    line_time += per
+#        planet = 0
+#        if source == 'planet':
+#            for j in range(len(planet_data['TICID'])):
+#                if planet_data['TICID'][j] == target_ID:
+#                    per = planet_data['pl_orbper'][j]
+#                    t0_Kepler = planet_data['pl_tranmid'][j] - 2454833
+#                    line_time = t0_Kepler
+#                    while line_time < stitched_lc.time[-1]:
+#                        ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c=colours[planet])
+#                        line_time += per
+#                    planet += 1
+#        elif source == 'pc':
+#            for j in range(len(pc_data['TICID'])):
+#                if pc_data['TICID'][j] == target_ID:
+#                    per = pc_data['koi_period'][j]
+#                    t0_Kepler = pc_data['koi_time0bk'][j]
+#                    line_time = t0_Kepler
+#                    while line_time < stitched_lc.time[-1]:
+#                        ax.axvline(line_time, ymin = 0.1, ymax = 0.2, lw=1, c=colours[planet])
+#                        line_time += per
+#                    planet += 1
         
-        kepler_fig.figure.savefig(save_path + "Candidate epochs/"+ "TIC {} - Kepler candidate epochs.png".format(target_ID))
-        plt.close(kepler_fig.figure)
+#        kepler_fig.figure.savefig(save_path + "Planet epochs/"+ "TIC {} - Kepler planet epochs.png".format(target_ID))
+#        plt.close(kepler_fig.figure)
     except:
-        with open(save_path+'Candidate epochs/Failed_lcs.csv','a') as f:
-            data_row = [target_ID, sector]
-            writer = csv.writer(f, delimiter=',')
-            writer.writerow(data_row)
+        print('Planet failed you fool')
+#        with open(save_path+'Candidate epochs/Failed_lcs.csv','a') as f:
+#            data_row = [target_ID, sector]
+#            writer = csv.writer(f, delimiter=',')
+#            writer.writerow(data_row)
     num_lcs += 1
     print("Number of light-curves analysed: {}".format(num_lcs))
     partway = time.time()
