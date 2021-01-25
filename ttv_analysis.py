@@ -765,7 +765,7 @@ def build_model(mask=None, start=None, optimisation=True):
 #        m_star = BoundedNormal("m_star", mu=M_star[0], sd=M_star[1],testval=np.around(M_star[0], decimals = 1))	#stellar mass
 #        r_star = BoundedNormal("r_star", mu=R_star[0], sd=R_star[1],testval=np.around(R_star[0], decimals = 1))	#stellar radius
         m_star = M_star[0]
-        r_star = R_star[0]*0.98 #*1.3 for KOI-12b
+        r_star = R_star[0] #*1.3 for KOI-12b
         
 		############################################################    
 		
@@ -778,7 +778,7 @@ def build_model(mask=None, start=None, optimisation=True):
         r_pl_b = pm.Deterministic("r_pl_b", tt.exp(logr_b)) #radius - we then unlog the radius to keep track of it. a pm.Deterministic basically just tracks a value for you for later on!	
         ratio_b = pm.Deterministic("ror_b", r_pl_b / r_star) #ratio - radius ratio between planet and star    		
         if incls[planet_num] == 90:
-            mu_try = 87.5 #incls[planet_num]
+            mu_try = 88 #incls[planet_num]
             incl_b = pm.Normal('incl',mu=mu_try/180*np.pi, sd=1.0)
         else:
 #            incl_b = incls[planet_num]/180*np.pi

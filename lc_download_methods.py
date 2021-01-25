@@ -143,7 +143,10 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
     Downloads and returns 30min cadence lightcurves based on Oelkers & Stassun
     difference imaging analysis method of lightcurve extraction
     """
-    DIAdir = '/ngts/scratch/tess/FFI-LC/S{}/clean/'.format(sector)
+    if sector < 3:
+        DIAdir = '/tess/photometry/DIA_FFI/S{}/clean/'.format(sector)
+    else:
+        DIAdir = '/tess/photometry/DIA_FFI/S{}/lc/clean/'.format(sector)
     
     if from_file == True:
         # reads input table for targets
@@ -177,8 +180,8 @@ def diff_image_lc_download(target_ID, sector, plot_lc = True, from_file = True, 
 ##    camera = 
 #    ccd = star.chip
     
-#    filename = DIAdir+'{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
-    filename = '{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
+    filename = DIAdir+'{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
+#    filename = '{}_sector0{}_{}_{}.lc'.format(tic, sector, camera, ccd)
 #    filename = '410214986_sector01_3_2.lc'
 
     print('Trying file {}'.format(filename))
@@ -303,7 +306,7 @@ def lc_from_csv(filename):
     detrended_lc = lightkurve.LightCurve(time,detrended_flux, flux_err)
     return detrended_lc
 
-def get_lc_from_fits(filename, source='QLP'):
+def get_lc_from_fits(filename, source='QLP', clean=True):
     """
     Obtains lc from fits file if not one of the standard TESS pipelines
     n.b. Currently set up to handle QLP and CDIPS files, though easily extended
@@ -314,31 +317,39 @@ def get_lc_from_fits(filename, source='QLP'):
 #    print(hdul[1].header)
     
     if source == 'QLP':
-        tic = filename[25:34]
+        tic = filename[28:40]
         
         time = data['TIME']
         sap_flux = data['SAP_FLUX']
         kspsap_flux = data['KSPSAP_FLUX']
         quality = data['QUALITY']
-        quality = quality.astype(bool)
+#        quality = quality.astype(bool)
+        quality = np.array([item>4095 for item in quality])
         
-        clean_time = time[~quality]
-        clean_flux = sap_flux[~quality]
-        clean_kspsap_flux = kspsap_flux[~quality]
+        if clean == True:
+            clean_time = time[~quality]
+            clean_flux = sap_flux[~quality]
+            clean_kspsap_flux = kspsap_flux[~quality]
+            quality = quality[~quality]
+        else:
+            clean_time = time
+            clean_flux = sap_flux
+            clean_kspsap_flux = kspsap_flux
+            quality = quality
         
-        plt.figure()
-        plt.scatter(clean_time, clean_flux,s=1,c='k')
-        plt.title('SAP lc for TIC {}'.format(tic))
-        plt.show()
+#        plt.figure()
+#        plt.scatter(clean_time, clean_flux,s=1,c='k')
+#        plt.title('SAP lc for TIC {}'.format(tic))
+#        plt.show()
         
-        plt.figure()
-        plt.scatter(clean_time, clean_kspsap_flux,s=1,c='k')
-        plt.title('KSPSAP lc for TIC {}'.format(tic))
-        plt.show()
+#        plt.figure()
+#        plt.scatter(clean_time, clean_kspsap_flux,s=1,c='k')
+#        plt.title('KSPSAP lc for TIC {}'.format(tic))
+#        plt.show()
         
         hdul.close()
         
-        lc = lightkurve.LightCurve(time = clean_time, flux = clean_flux, flux_err = quality[~quality], targetid = tic)
+        lc = lightkurve.LightCurve(time = clean_time, flux = clean_flux, flux_err = quality, targetid = tic)
         return lc
     elif source == 'CDIPS':
 #        print('Using CDIPS')

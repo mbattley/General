@@ -282,6 +282,9 @@ def clean_tess_lc(time, flux, flux_err, target_ID, sector, save_path):
                 for_removal[i] = True
     elif sector == 5:
         mom_dumps = s5_bad_times
+        for i in range(len(time)):
+            if time[i] > 1464.05:
+                for_removal[i] = True
     elif sector == 6:
         mom_dumps = s6_bad_times
         for i in range(len(time)):

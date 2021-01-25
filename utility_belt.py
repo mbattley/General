@@ -14,6 +14,67 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.table import Table
 from astroquery.mast import Catalogs
+from scipy import optimize
+from astropy.timeseries import LombScargle
+
+
+def trig_func(t,f,a,b,c):
+    return a*np.sin(2*np.pi*f*t) + b*np.cos(2*np.pi*f*t) + c
+
+def next_highest_freq(time, flux, freq, f_remove, plot_ls_fig = False,target_ID = ''):
+    popt_maxV, pcov_maxV = optimize.curve_fit(lambda t, a, b, c: trig_func(t,f_remove, a, b, c), time, flux, maxfev=1000)
+    max_var = trig_func(time,f_remove,*popt_maxV)
+    flux = flux/max_var
+    power = LombScargle(time, flux).power(freq)
+    if plot_ls_fig == True:
+        ls_fig = plt.figure()
+        plt.plot(freq, power, c='k', linewidth = 1)
+        plt.xlabel('Frequency')
+        plt.ylabel('Power')
+        plt.title('{} LombScargle Periodogram'.format(target_ID))
+        ls_fig.show()
+    i = np.argmax(power)
+    freq_2 = freq[i]
+    return freq_2, flux
+
+def find_freqs(time, flux, plot_ls_fig = True, target_ID = ''):
+    
+    # Remove frequencies associated with 14d data gap
+    f=1/14
+    popt_sys, pcov_sys = optimize.curve_fit(lambda t, a, b, c: trig_func(t,f, a, b, c), time, flux, maxfev=1000)
+    sys_var = trig_func(time,f,*popt_sys)
+    flux = flux/sys_var
+    
+     #From Lomb-Scargle
+    freq = np.arange(0.05,4.1,0.00001)
+    power = LombScargle(time, flux).power(freq)
+    if plot_ls_fig == True:
+        ls_fig = plt.figure()
+        plt.plot(freq, power, c='k', linewidth = 1)
+        plt.xlabel('Frequency')
+        plt.ylabel('Power')
+        plt.title('{} LombScargle Periodogram for original lc'.format(target_ID))
+        ls_fig.show()
+#        ls_fig.savefig(save_path + '{} - Lomb-Scargle Periodogram for original lc.png'.format(target_ID))
+#        plt.close(ls_fig)
+    i = np.argmax(power)
+    freq_rot = freq[i]
+    
+    # Remove highest frequency to get 2nd highest
+    f_remove=freq_rot
+    freq_2, flux = next_highest_freq(time, flux, freq, f_remove, plot_ls_fig = False)
+        
+    # Remove 2nd highest frequency to get 3rd highest
+    f_remove=freq_2
+    freq_3, flux = next_highest_freq(time, flux, freq, f_remove, plot_ls_fig = False)
+
+    freq_list = [freq_rot,freq_2,freq_3]
+    
+    #final_fig = plt.figure()
+    #plt.scatter(time,flux,s=1,c='k')
+    #plt.show()
+    
+    return freq_list
 
 def tic_stellar_info(target_ID, from_file = False, filename = 'BANYAN_XI-III_members_with_TIC.csv'):
     if from_file == True:
